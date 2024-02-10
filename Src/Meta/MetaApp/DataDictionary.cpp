@@ -273,12 +273,18 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
       // ------------------ generate the selectors for the table  -----------------------------------
       os << StartNameDoc(6, "selectors", ClassName());
       for (auto const& [attr, dtype] : processing_data) {
-         std::string strRetType  = "std::optional<"s + dtype.SourceType() + (dtype.UseReference() ?  "> const&"s : ">"s);
+         std::string strRetType = "std::optional<"s + dtype.SourceType() + "> const&"s;
          std::string strSelector = attr.Name();
          std::string strAttribute = dtype.Prefix() + attr.Name() + ">";
          std::string strComment = attr.Comment_Attribute();
-         //os << std::format("{0}{1:<{2}}{3}() const {{ return {4}; }} ///< selector for {5}\n", strTab, strRetType, maxLengthRet + 15, strSelector, strAttribute, strComment);
-         os << std::format("{0}/// selector for {5}\n{0}{1:<{2}}{3}() const {{ return {4}; }}\n", strTab, strRetType, maxLengthRet + 15, strSelector, strAttribute, strComment);
+         os << std::format("{0}/// selector with std::optional as retval for {5}\n{0}{1:<{2}}{3}() const {{ return {4}; }}\n", strTab, strRetType, maxLengthType + 22, strSelector, strAttribute, strComment);
+         }
+      os << "\n";
+      for (auto const& [attr, dtype] : processing_data) {
+         std::string strRetType   = dtype.SourceType() + (dtype.UseReference() ?  " const&"s : ""s);
+         std::string strSelector  = attr.Name();
+         std::string strComment   = attr.Comment_Attribute();
+         os << std::format("{0}///< selector with value for {4}\n{0}{1:<{2}}_{3}() const;\n", strTab, strRetType, maxLengthRet, strSelector, strComment);
          }
       os << EndNameDoc(6);
 
@@ -289,7 +295,8 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
          std::string strManipulator = attr.Name();
          std::string strAttribute   = dtype.Prefix() + attr.Name();
          std::string strComment     = attr.Comment_Attribute();
-         os << std::format("      {0:<{1}}{2}({0} newVal); ///< manipulator for {3}\n", strRetType, maxLengthRet + 15, strManipulator, strComment);
+         //os << std::format("{0}{1:<{2}}{3}({1} newVal); ///< manipulator for {4}\n", strTab, strRetType, maxLengthRet + 15, strManipulator, strComment);
+         os << std::format("{0}/// manipulator for {4}\n{0}{1:<{2}}{3}({1} newVal);\n", strTab, strRetType, maxLengthRet + 15, strManipulator, strComment);
          }
       os << EndNameDoc(6);
 
@@ -301,7 +308,22 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
 
       os << "   };\n\n";
 
-      os << "/// Implementations of the manipulators\n";
+      os << "// Implementations of the special selectors for return values instead std::optional\n";
+      for (auto const& [attr, dtype] : processing_data) {
+         std::string strRetType = dtype.SourceType() + (dtype.UseReference() ? " const&"s : ""s);
+         std::string strSelector = attr.Name();
+         std::string strAttribute = dtype.Prefix() + attr.Name();
+         std::string strComment = attr.Comment_Attribute();
+         std::string strReturn = std::format("   if({0}) [[likely]] return {0}.value();\n"
+                                             "   else throw std::runtime_error(\"value for attribute \\\"{1}\\\" in class \\\"{2}\\\" is empty.\");",
+                                             strAttribute, attr.Name(), ClassName());
+         os << std::format("inline {1} {0}::_{2}() const {{\n{3};\n   }}\n\n", ClassName(), strRetType, strSelector, strReturn);
+      }
+
+      
+
+      os << '\n';
+      os << "// Implementations of the manipulators\n";
       for (auto const& [attr, dtype] : processing_data) {
          std::string strRetType = dtype.UseReference() ? dtype.SourceType() + " const&"s : dtype.SourceType();
          std::string strManipulator = ClassName() + "::"s + attr.Name();

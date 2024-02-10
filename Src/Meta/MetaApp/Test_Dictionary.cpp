@@ -37,17 +37,17 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
 
 
-   dictionary.AddDataType("bigint", "BIGINT", false, false, "long long", "", "i", "0", false, "groﬂe Ganzzahl");
-   dictionary.AddDataType("bool", "SMALLINT", false, false, "bool", "", "bo", "false", false, "");
-   dictionary.AddDataType("char", "CHAR", true, false, "std::string", "<string>", "c", "' '", true, "Zeichenkette mit fester L‰nge");
-   dictionary.AddDataType("date", "DATE", false, false, "std::chrono::year_month_day", "<chrono>", "da", "std::chrono::system_clock::now()", false, "");
-   dictionary.AddDataType("datetime", "DATE", false, false, "std::chrono::system_clock::time_point>", "<chrono>", "dt", "std::chrono::floor<std::chrono::days>(std::chrono::system_clock::now())", false, "");
-   dictionary.AddDataType("decimal", "DECIMAL", true, true, "double", "", "fl", "0.0", true, "binary coded decimal");
-   dictionary.AddDataType("double", "FLOAT", false, false, "double", "", "fl", "0.0", true, "");
-   dictionary.AddDataType("integer", "INT", false, false, "int", "", "i", "0", false, "");
-   dictionary.AddDataType("smallint", "SMALLINT", false, false, "int", "", "i", "0", false, "normalerweise als bool interpretierter SmallInt- Type");
-   dictionary.AddDataType("varchar", "VARCHAR", true, false, "std::string", "<string>", "str", "\"\"", true, "Zeichenkette mit variabler L‰nge");
-   dictionary.AddDataType("text", "VARCHAR(MAX)", false, false, "std::string", "<string>", "str", "", true, "Text, Zeichenkette mit maximaler L‰nge");
+   dictionary.AddDataType("bigint", "BIGINT", false, false, "long long", "", "i", "{ }", false, "groﬂe Ganzzahl");
+   dictionary.AddDataType("bool", "SMALLINT", false, false, "bool", "", "bo", "{ }", false, "");
+   dictionary.AddDataType("char", "CHAR", true, false, "std::string", "<string>", "c", "{ }", true, "Zeichenkette mit fester L‰nge");
+   dictionary.AddDataType("date", "DATE", false, false, "std::chrono::year_month_day", "<chrono>", "da", "{ }", false, "");
+   dictionary.AddDataType("datetime", "DATE", false, false, "std::chrono::system_clock::time_point>", "<chrono>", "dt", "{ }", false, "");
+   dictionary.AddDataType("decimal", "DECIMAL", true, true, "double", "", "fl", "{ }", true, "binary coded decimal");
+   dictionary.AddDataType("double", "FLOAT", false, false, "double", "", "fl", "{ }", true, "");
+   dictionary.AddDataType("integer", "INT", false, false, "int", "", "i", "{ }", false, "");
+   dictionary.AddDataType("smallint", "SMALLINT", false, false, "int", "", "i", "{ }", false, "normalerweise als bool interpretierter SmallInt- Type");
+   dictionary.AddDataType("varchar", "VARCHAR", true, false, "std::string", "<string>", "str", "{ }", true, "Zeichenkette mit variabler L‰nge");
+   dictionary.AddDataType("text", "VARCHAR(MAX)", false, false, "std::string", "<string>", "str", "{ }", true, "Text, Zeichenkette mit maximaler L‰nge");
 
 
    dictionary.AddTable("Address", EMyEntityType::table, "Address", "dbo", "Address", "myTest", "System", "SQL", "information on the addresses where a person lives, works or has any other relationship with them")
