@@ -30,3 +30,27 @@
 *.exe
 *.out
 *.app
+.dcu
+
+#visual studio
+*.user
+*.aps
+
+#intel vtune
+vtune
+Intel® VTune™ Profiler Results
+
+# special embarcadero files or directories
+__history
+__astcache
+__recovery
+*.local
+*.skincfg
+
+# special directories
+Win32
+Win64
+Release
+Debug
+.vs
+x64
