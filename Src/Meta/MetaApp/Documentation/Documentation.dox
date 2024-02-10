@@ -1,0 +1,30 @@
+\mainpage Project description
+\tableofcontents
+
+\section secMainContent Content description / preamble
+\details This project is one of the training materials of the freely accessible project "adecc Scholar". This project is about 
+imparting extended know-how about programming with C++. The aim is not only to show the techniques for using the
+C++ language, but also various paradigms and architectural approaches. This project also deals with the use of containers
+containers, iterators and algorithms, and training the use of the C++20 ranges.
+\details This project is about the definition and implementation of a simple metadata management system to demonstrate the paradigm of
+programming with metadata, and a basis for the necessary system classes for the complex example of programming
+with layers, the separation of interface and data, and the use of a process layer to implement the business transactions. Although we 
+use this metadata to create C++ source code and SQL statements, and later connect the libraries \ref pgadeccScholar and 
+\ref pgadeccDatabase, they can of course be used to create source code in any other programming language.
+
+\section secMainLicense license conditions
+This project is developed under the MIT License. The license terms can be found on the page \ref pgLicense.
+
+\section secMainFinishing conditions
+To use this project, you need a current C++ compiler that implements C++20 and already provides the first C++23 extensions
+are already available. This project is currently being developed with Visual Studio 2022 and Qt6.6.
+
+
+\class TMyDictionary 
+\brief class represented the metadata collection 
+\author Volker Hillmann
+\date 02.02.2024 documentation for this project created
+
+\fn TMyDictionary::DataTypes
+\brief Method to get access to the Datatypes for this project
+\result myDataTypes const& container with datatypes for the project
