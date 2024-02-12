@@ -47,7 +47,11 @@ int main() {
    dict_data.Dictionary().SQLPath("D:\\Test\\Persons\\SQL");
    dict_data.Dictionary().DocPath("D:\\Test\\Persons\\Documentation");
 
-   dict_data.Dictionary().Create_All(std::cout, std::cerr);
-
+   try {
+      dict_data.Dictionary().Create_All(std::cout, std::cerr);
+      }
+   catch(std::exception& ex) {
+      std::cerr << ex.what() << '\n';
+      }
 }
 
