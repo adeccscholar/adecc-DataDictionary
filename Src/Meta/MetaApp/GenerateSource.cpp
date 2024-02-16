@@ -58,90 +58,154 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
          }
       os << "\n */\n\n";
 
+      auto parents = GetParents();
+      auto part_of_data = GetPart_ofs();
+
+      // write header files for base classes
+      if (!parents.empty()) {
+         os << "\n// includes for base classes\n";
+         std::ranges::for_each(parents, [&os](auto const& p) { os << std::format("#include {}\n", p.Include()); });
+         }
+
+      // write header files for compositions
+      if (!part_of_data.empty()) {
+         os << "\n// includes for part of relationships\n";
+         std::ranges::for_each(part_of_data, [&os](auto const& p) { os << std::format("#include {}\n", std::get<0>(p).Include()); } ); 
+         }
+
       // find n
       auto types = Attributes() | std::views::transform([this](auto const& s) {
-         auto const& dt = Dictionary().FindDataType(s.DataType());
-         return dt.Headerfile(); })
-         | std::ranges::to<std::set<std::string>>();
+                                   auto const& dt = Dictionary().FindDataType(s.DataType());
+                                   return dt.Headerfile(); })
+                                | std::ranges::to<std::set<std::string>>();
 
-         std::ranges::for_each(types | std::views::filter([](const std::string& line) {
-            return !line.empty(); }), [&os](const std::string& line) {
-               os << "#include " << line << '\n';
-               });
-         os << '\n';
+      if (!types.empty()) {
+         os << "\n// additional headers for used datatypes\n";
+         std::ranges::for_each(types | std::views::filter([](const std::string& line) { return !line.empty(); }),
+                        [&os](const std::string& line) { os << "#include " << line << '\n'; });
+         }
 
-         auto parents = References() | std::views::filter([](auto const& r) { return r.ReferenceType() == EMyReferenceType::generalization; })
-            | std::views::transform([this](auto const& r) { return Dictionary().FindTable(r.RefTable()); });
+      os << "\n"
+         << "#include <optional>\n"
+         << "#include <map>\n"
+         << "#include <tuple>\n"  // possible to avoid this (count of primary keys && count of composed keys < 2
+         << "\n";
 
-         auto processing_data = Attributes() | std::views::transform([this](auto const& attr) {
-                                                   return std::make_pair(attr, Dictionary().FindDataType(attr.DataType())); })
-                                             | std::ranges::to<std::vector>();
+      auto processing_data = GetProcessing_Data();
 
-            if (!parents.empty()) {
-               std::ranges::for_each(parents, [&os](auto const& p) { os << std::format("#include {}\n", p.Include()); });
-               }
+      // bestimme die maximale Breite für die Attribute
+      auto maxElement = std::ranges::max_element(processing_data, [](auto const& a, auto const& b) {
+         return a.second.SourceType().size() < b.second.SourceType().size(); });
 
-            os << "#include <optional>\n\n";
+      size_t maxLengthType = 0;
+      if (maxElement != processing_data.end()) {
+         maxLengthType = maxElement->second.SourceType().size() + 1;
+         }
 
-            bool boHasNamespace = Namespace().size() > 0;
+      maxElement = std::ranges::max_element(processing_data, [](auto const& a, auto const& b) {
+         static auto constexpr len = [](auto const& e) {
+            return e.second.SourceType().size() + (e.second.UseReference() ? 9 : 1);
+            };
+         return len(a) < len(b);
+         });
 
-            if (boHasNamespace) os << "namespace " << Namespace() << " {\n\n";
+      size_t maxLengthRet = 0;
+      if (maxElement != processing_data.end()) {
+         maxLengthRet = maxElement->second.SourceType().size();
+         maxLengthRet += maxElement->second.UseReference() ? 9 : 1;
+         }
 
-            os << "/// " << Comment() << "\n";
-            os << "class " << ClassName();
-            if (!parents.empty()) {
-               size_t i = 0;
-               std::ranges::for_each(parents, [this, &os, &i](auto const& p) { 
+
+      maxElement = std::ranges::max_element(processing_data, [](auto const& a, auto const& b) {
+         static auto constexpr len = [](auto const& e) {
+            return e.second.Prefix().size() + e.first.Name().size();
+            };
+         return len(a) < len(b);
+         });
+
+      size_t maxLengthAttr = 0;
+      if (maxElement != processing_data.end()) {
+         maxLengthAttr = maxElement->second.Prefix().size() + maxElement->first.Name().size() + 1;
+         }
+
+
+      // open the namespace when needed
+      bool boHasNamespace = Namespace().size() > 0;
+      if (boHasNamespace) os << "namespace " << Namespace() << " {\n\n";
+
+      // write comment to open class
+      os << "/// \\brief " << Denotation() << "\n";
+      os << "class " << ClassName();
+      
+      // write base classes from references
+      if (!parents.empty()) {
+         size_t i = 0;
+         std::ranges::for_each(parents, [this, &os, &i](auto const& p) { 
                                        os << (i++ > 0 ? ", public " : ": public ") 
                                           << (Namespace() != p.Namespace() ? p.FullClassName() : p.ClassName()); 
                                        });
+         }
+      os << " {\n";
+
+       // ---------------- generate datatypes for composed tables ---------------------------------------
+      if (!part_of_data.empty()) {
+         os << "   // public datatypes for composed tables\n"
+            << "   public:\n";
+         for (auto const& [table, strType, strVar, vecKeys, vecParams] : part_of_data) {
+            os << "\n" << strTab << "/// datatype for composed table \\ref " << table.Doc_RefName() << '\n';
+            os << strTab << "using " << strType << " = ";
+            switch(vecKeys.size()) {
+               case 0: 
+                  os << (Namespace() != table.Namespace() ? table.FullClassName() : table.ClassName());
+                  break;
+               case 1: 
+                  {
+                  os << "std::map<" << Dictionary().FindDataType(table.FindAttribute(vecKeys[0]).DataType()).SourceType() << ", "
+                     << (Namespace() != table.Namespace() ? table.FullClassName() : table.ClassName())
+                     << ">";
+                  }
+                  break;
+               default:
+                  //auto strDatatype = Dictionary().FindDataType(table.FindAttribute(vecKeys[0]).Name());
+                  ;
                }
-            os << " { \n"
-               << "   private:\n";
-
-            auto maxElement = std::ranges::max_element(processing_data, [](auto const& a, auto const& b) {
-               return a.second.SourceType().size() < b.second.SourceType().size(); });
-
-            size_t maxLengthType = 0;
-            if (maxElement != processing_data.end()) {
-               maxLengthType = maxElement->second.SourceType().size() + 1;
-               }
-
-            maxElement = std::ranges::max_element(processing_data, [](auto const& a, auto const& b) {
-               static auto constexpr len = [](auto const& e) {
-                  return e.second.SourceType().size() + (e.second.UseReference() ? 9 : 1);
-                  };
-               return len(a) < len(b);
-               });
-
-            size_t maxLengthRet = 0;
-            if (maxElement != processing_data.end()) {
-               maxLengthRet = maxElement->second.SourceType().size();
-               maxLengthRet += maxElement->second.UseReference() ? 9 : 1;
-               }
+            os << ";\n";
+            }
+         os << "\n";
+         }
 
 
-            maxElement = std::ranges::max_element(processing_data, [](auto const& a, auto const& b) {
-               static auto constexpr len = [](auto const& e) {
-                  return e.second.Prefix().size() + e.first.Name().size();
-                  };
-               return len(a) < len(b);
-               });
-            size_t maxLengthAttr = 0;
-            if (maxElement != processing_data.end()) {
-               maxLengthAttr = maxElement->second.Prefix().size() + maxElement->first.Name().size() + 1;
-               }
+      // ------------------ generate the attributes for the table  -----------------------------------
+      os << "   // private data elements, attributes from table \\ref " << Doc_RefName() << "\n"
+         << "   private:\n";
 
-            os << "\n   private:\n";
+      for (auto const& [attr, dtype] : processing_data) {
+         std::string strType = "std::optional<"s + dtype.SourceType() + ">"s;
+         std::string strAttribute = dtype.Prefix() + attr.Name() + ";"s;
+         std::string strComment = attr.Comment_Attribute();
+         os << std::format("{0}/// {5}\n{0}{1:<{2}}{3:<{4}}\n", strTab, strType, maxLengthType + 15, strAttribute, maxLengthAttr, strComment);
+         }
 
-            // ------------------ generate the attributes for the table  -----------------------------------
-            for (auto const& [attr, dtype] : processing_data) {
-               std::string strType = "std::optional<"s + dtype.SourceType() + ">"s;
-               std::string strAttribute = dtype.Prefix() + attr.Name() + ";"s;
-               std::string strComment = attr.Comment_Attribute();
-               //os << std::format("{0}{1:<{2}}{3:<{4}} ///< {5}\n", strTab, strType, maxLengthType + 15, strAttribute, maxLengthAttr, strComment);
-               os << std::format("{0}/// {5}\n{0}{1:<{2}}{3:<{4}}\n", strTab, strType, maxLengthType + 15, strAttribute, maxLengthAttr, strComment);
-               }
+      if (!part_of_data.empty()) {
+         //os << "\n   private:\n";
+         os << "\n" << strTab << "// data elements for composed tables\n";
+         for(auto const& [table, strType, strVar, vecKeys, vecParams] : part_of_data) {
+            /*
+            os << strTab << "// key types are:";
+            std::ranges::for_each(vecKeys, [&os](auto const& val) { os << " " << val; });
+            os << '\n' << strTab << "// param types are:";
+            std::ranges::for_each(vecParams, [&os](auto const& val) { os << " {" << val.first << ", " << val.second << "}"; });
+            os << '\n';
+            */
+            os << std::format("{0}/// composed data element for the table \\ref {1}\n{0}{2} {3};", strTab, table.Doc_RefName(), strType, strVar);
+            //if(vecKeys.size() > 0) {
+            //   os
+            //   }
+
+            }
+         //std::ranges::for_each(part_of_data, [&os, &strTab](auto const& p) { os << std::format("{}{} {}\n", strTab, std::get<1>(p), std::get<2>(p)); });
+         //for (auto const& [tab, ref] : part_of_data) { os << std::format("{0}///{}\n{0}my{} "       os << "// my" << tab.Name() << " m" << tab.Name() << ";\n"; }
+         }
 
             os << "\n   public:\n" << StartNameDoc(6, "constructors and destructor", ClassName());
             os << std::format("{0}{1:}();\n", strTab, ClassName())
@@ -155,7 +219,7 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
                << std::format("{0}virtual void copy({1} const& other);\n\n", strTab, ClassName());
             os << EndNameDoc(6);
 
-            // ------------------ generate the selectors for the table  -----------------------------------
+            // ------------------ generate the selectors direct data elements for the table  -----------------------------------
             os << StartNameDoc(6, "selectors", ClassName());
             for (auto const& [attr, dtype] : processing_data) {
                std::string strRetType = "std::optional<"s + dtype.SourceType() + "> const&"s;
@@ -173,9 +237,11 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
                }
             os << EndNameDoc(6);
 
+
+
             // ------------------ generate the manipulators for the table  -----------------------------------
             os << StartNameDoc(6, "manipulators", ClassName());
-            for (auto const& [attr, dtype] : processing_data) {
+            for (auto const& [attr, dtype] : processing_data | std::views::filter([](auto const& val) { return !val.first.IsComputed(); })) {
                std::string strRetType = "std::optional<"s + dtype.SourceType() + "> const&"s;
                std::string strManipulator = attr.Name();
                std::string strAttribute = dtype.Prefix() + attr.Name();
@@ -193,6 +259,8 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
 
             os << "   };\n\n";
 
+            // datatypes for the container of this type
+
             os << "// Implementations of the special selectors for return values instead std::optional\n";
             for (auto const& [attr, dtype] : processing_data) {
                std::string strRetType = dtype.SourceType() + (dtype.UseReference() ? " const&"s : ""s);
@@ -209,7 +277,7 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
 
             os << '\n';
             os << "// Implementations of the manipulators\n";
-            for (auto const& [attr, dtype] : processing_data) {
+            for (auto const& [attr, dtype] : processing_data | std::views::filter([](auto const& val) { return !val.first.IsComputed(); })) {
                std::string strRetType = "std::optional<"s + dtype.SourceType() + "> const&"s;
                std::string strManipulator = ClassName() + "::"s + attr.Name();
                std::string strAttribute = dtype.Prefix() + attr.Name();

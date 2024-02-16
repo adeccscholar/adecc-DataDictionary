@@ -24,9 +24,6 @@
     <ClCompile Include="DataDictionary.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="Berlin_Dictionary.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="Test_Dictionary.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>

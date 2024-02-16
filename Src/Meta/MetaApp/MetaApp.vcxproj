@@ -137,7 +137,6 @@
   <ItemGroup>
     <ClCompile Include="MetaApp.cpp" />
     <ClCompile Include="DataDictionary.cpp" />
-    <ClCompile Include="Berlin_Dictionary.cpp" />
     <ClCompile Include="GenerateSource.cpp" />
     <ClCompile Include="GenerateSQL.cpp" />
     <ClCompile Include="GenerateDox.cpp" />

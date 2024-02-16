@@ -33,9 +33,47 @@ inline std::string toHTML(const std::string& input) {
    return output;
 }
 
+void TMyDictionary::Create_Doxygen_SQL(std::ostream& os) const {
+   os << "\n\\page pg" << Identifier() << "_sql_informations informations to create database\n"
+      << "\\section segPg" << Identifier() << "_preamble preamble\n"
+      << "\\details the database contains " << Tables().size() << " tables with additional informations. this "
+      << "          part of the documentations contains all information to create the database with tables, primary keys,\n"
+      << "          foreign keys, key canditates and indices.\n"
+      << "\\details there is only a script to drop all informations in the database. at first the script will drop\n"
+      << "          all foreign key, before the tables can be dropped too.\n\n"
+      << "\\section secPg" << Identifier() << "_sql_create create tables of the application\n"
+      << "\\code{.sql}\n";
+   Create_SQL_Tables(os);
+   os << "\\endcode\n";
+
+   os << "\\section secPg" << Identifier() << "_sql_additional create all additional informations\n"
+      << "\\code{.sql}\n";
+   Create_SQL_Additionals(os);
+   os << "\\endcode\n";
+
+   os << "\\section secPg" << Identifier() << "_sql_drop drop all elements in the database\n"
+      << "\\code{.sql}\n";
+   SQL_Drop_Tables(os);
+   os << "\\endcode\n";
+
+   }
+
+
 void TMyDictionary::Create_Doxygen(std::ostream& os) const {
    std::ranges::for_each(Tables(), [&os](auto const val) { 
                   os << std::format("\\include{{doc}} {}/{}.dox\n", std::get<1>(val).SrcPath(), std::get<1>(val).Name()); });
+   os << std::format("\\include{{doc}} {}/{}.dox\n", "sql"s, Identifier() + "_sql"s);
+
+   if(!namespaces.empty()) {
+      for(auto const& [_, nsp] : namespaces) {
+         os << "\n\\namespace " << nsp.Name() << '\n'
+            << "\\brief " << nsp.Denotation() << '\n';
+         std::ranges::for_each(nsp.Description() | std::views::split('\n'), [&os](const auto& line) {
+            os << "\\details "s << std::string_view(line.begin(), line.end()) << '\n';
+            });
+         os << '\n';
+         }
+      }
 
    os << "\n\\mainpage " << Denotation() << '\n'
       << "\\tableofcontents\n";
@@ -88,8 +126,9 @@ void TMyDictionary::Create_Doxygen(std::ostream& os) const {
    // create nodes with the relationships
    std::ranges::for_each(Tables(), [&os](auto const& table) {
       std::ranges::for_each(std::get<1>(table).References(), [&os](auto const& ref) {
-              os << "   " << ref.Name() << " [label=\"" << ref.Description()
-                 << "\", shape=diamond,fontname=\"Helvetica\", fontsize=8];\n";
+              os << "   " << ref.Name() << " [label=\"" << ref.Description();
+              if (ref.Cardinality().size() > 0) os << "\n(" << ref.Cardinality() << ")";
+              os << "\", shape=diamond,fontname=\"Helvetica\", fontsize=8];\n";
               });
       });
 
@@ -174,16 +213,16 @@ void TMyDictionary::Create_Doxygen(std::ostream& os) const {
 
       os << "</table>\n\n";
 
-      // --------------------------------------------------------------------------------------
+      // -------------------------------------------------------------------------------------------
       // create a section for the relationships (only when there relationships exists)
-      // --------------------------------------------------------------------------------------
+      // -------------------------------------------------------------------------------------------
       if(!table.References().empty()) {
-         os << "\n\\subsubsection " << table.Doc_RefName() << "_relationships relationships\n";
+         os << "\n\\subsubsection " << table.Doc_RefName() << "_relationships_from relationships from " << table.Name() << "\n";
 
          os << "\\details <table>\n"
             << "<tr><th>type\n"
             << "    <th>related\n"
-            << "    <th>Reference\n"
+            << "    <th>to table\n"
             << "    <th>description\n"
             << "</tr>\n";
 
@@ -195,6 +234,37 @@ void TMyDictionary::Create_Doxygen(std::ostream& os) const {
                << "    <td valign =\"top\">" << reference.Comment() << '\n'
                << "</tr>";
             }
+         os << "</table>\n\n";
+         }
+
+      // --------------------------------------------------------------------------------------------
+      // create a section for the relationships to this entity (only when there relationships exists)
+      // --------------------------------------------------------------------------------------------
+      std::vector<std::pair<TMyTable, TMyReferences>> process_data;
+      for(auto const& [_, ref_table] : Tables() | std::views::filter([&table](auto const& t) { return t.first != table.Name(); })) {
+         for(auto const& ref : ref_table.References() | std::views::filter([&table](auto const& r) { return r.RefTable() == table.Name(); } )) {
+            process_data.emplace_back(std::make_pair(ref_table, ref));
+            }
+         }
+
+      if (!process_data.empty()) {
+         os << "\n\\subsubsection " << table.Doc_RefName() << "_relationships_to relationships to " << table.Name() << "\n";
+
+         os << "\\details <table>\n"
+            << "<tr><th>from table\n"
+            << "    <th>type\n"
+            << "    <th>related\n"
+            << "    <th>description\n"
+            << "</tr>\n";
+
+         for(auto const& [tab, ref] : process_data) {
+            os << "<tr><td valign =\"top\"> \\ref " << tab.Doc_RefName() << '\n'
+               << "    <td valign =\"top\">" << ref.ReferenceTypeTxt() << '\n'
+               << "    <td valign =\"top\">" << ref.Description() << '\n'
+               << "    <td valign =\"top\">" << ref.Comment() << '\n'
+               << "</tr>";
+            }
+         os << "</table>\n\n";
          }
 
       // --------------------------------------------------------------------------------------
@@ -202,7 +272,9 @@ void TMyDictionary::Create_Doxygen(std::ostream& os) const {
       // --------------------------------------------------------------------------------------
       os << "\n\\subsubsection " << table.Doc_RefName() << "_create create statement\n"
          << "\\code{.sql}\n";
-      table.SQL_Create_Table(os);
+      table.SQL_Create_Table(os, true);
+      os << '\n';
+      table.SQL_Create_PostConditions(os);
       os << '\n';
       table.SQL_Create_Check_Conditions(os);
       os << '\n';
@@ -213,10 +285,26 @@ void TMyDictionary::Create_Doxygen(std::ostream& os) const {
       table.SQL_Create_Foreign_Keys(os);
       os << "\n\\endcode\n";
       os << "\n";
+
+      // --------------------------------------------------------------------------------------
+      // create a section for the sql statements as range values or preset values
+      // --------------------------------------------------------------------------------------
+      if(table.RangeValues().size() > 0) {
+         os << "\n\\subsubsection " << table.Doc_RefName() << "_values insert values\n"
+            << "\\code{.sql}\n";
+         table.SQL_Create_RangeValues(os);
+         os << "\n\\endcode\n";
+         }
+
       os << "<hr><a href = \"#top_of_mainpage\">top of the page</a>\n";
+      os << "<hr>\n";
+
       }
 
-   os << "<hr>\n";
+   os << "<hr>\n"
+      << "\\see \\ref pg" << Identifier() << "_sql_informations\n\n"
+      << "<hr>\n";
+
    if(License().size() > 0) {
       os << "\\section secMainLicense license conditions\n"
          << License() << '\n';
@@ -228,14 +316,23 @@ void TMyDictionary::Create_Doxygen(std::ostream& os) const {
    if(Copyright().size() > 0)  {
       os << "\\copyright " << Copyright() << '\n';
       }
+
+   // create a subpage for sql
    }
 
 
 bool TMyTable::CreateDox(std::ostream& os) const {
-   os << "\\class " << FullClassName() << '\n'
-      << "\\author " << Dictionary().Author() << '\n'
+   os << "\\class " << FullClassName() << '\n';
+
+   std::ranges::for_each(Description() | std::views::split('\n'), [&os](const auto& line) { 
+                  os << "\\details " << std::string_view(line.begin(), line.end()) << '\n'; });
+
+   std::ranges::for_each(Comment() | std::views::split('\n'), [&os](const auto& line) {
+      os << "\\notes " << std::string_view(line.begin(), line.end()) << '\n'; });
+
+   os << "\\author " << Dictionary().Author() << '\n'
       << "\\date " << CurrentDate() << " documentation for this project created\n"
       << "\\see system class for the table \\ref " << Doc_RefName() << '\n';
-
+      
    return true;
    }

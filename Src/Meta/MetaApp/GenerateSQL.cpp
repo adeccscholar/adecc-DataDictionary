@@ -30,119 +30,180 @@ using namespace std::string_literals;
 // sql statements
 // -------------------------------------------------------------------------------------------------
 
-bool TMyTable::SQL_Create_Table(std::ostream& os) const {
-
+myStatements TMyTable::Create_Table_Statements(bool boAll) const {
    auto SQLRow = [this](TMyAttribute const& attr, size_t len) {
       auto const& datatype = attr.Table().Dictionary().FindDataType(attr.DataType());
-      return std::format("   {:<{}} {}{}{}", attr.DBName(), len, datatype.DatabaseType(),
-         (datatype.UseLen() && datatype.UseScale() ? std::format("({}, {})", attr.Len(), attr.Scale()) :
-            (datatype.UseLen() ? std::format("({})", attr.Len()) : ""s)), (attr.NotNull() ? " NOT NULL"s : ""s));
+      if (!attr.IsComputed()) [[unlikely]]
+         return std::format("   {:<{}} {}{}{}", attr.DBName(), len, datatype.DatabaseType(),
+            (datatype.UseLen() && datatype.UseScale() ? std::format("({}, {})", attr.Len(), attr.Scale()) :
+               (datatype.UseLen() ? std::format("({})", attr.Len()) : ""s)),
+            (attr.NotNull() ? " NOT NULL"s : ""s));
+      else
+         return std::format("   {:<{}} {}", attr.DBName(), len, " AS ("s + attr.Computed() + ")"s);
       };
 
-   try {
-      os << "CREATE TABLE " << FullyQualifiedSQLName() << " (\n";
+   myStatements ret;
+   std::ostringstream os;
 
-      auto maxLength = std::ranges::max_element(Attributes(), [](auto const& a, auto const& b) { return a.DBName().size() < b.DBName().size(); });
-      if (maxLength != Attributes().end()) {
-         auto len = maxLength->DBName().size();
-         for (auto const& attribute : Attributes() | std::ranges::views::take(Attributes().size() - 1)) {
-            os << SQLRow(attribute, len) << ",\n";
+   os << "CREATE TABLE " << FullyQualifiedSQLName() << " (\n";
+
+   auto attributes = Attributes() | std::views::filter([boAll](auto const& attr) { return boAll ? true : !attr.IsComputed(); });
+   auto maxLength = std::ranges::max_element(attributes, [](auto const& a, auto const& b) { return a.DBName().size() < b.DBName().size(); });
+   if (maxLength != attributes.end()  ) {
+      auto len = maxLength->DBName().size();
+      for (auto const& attribute : attributes | std::ranges::views::take(Attributes().size() - 1)) {
+         os << SQLRow(attribute, len) << ",\n";
          }
-         os << SQLRow(Attributes().back(), len) << '\n';
+      os << SQLRow(Attributes().back(), len) << '\n';
       }
-      os << "   );\n\n";
+   os << "   )";
+   ret.emplace_back(os.str());
+   return ret;
+   }
 
+myStatements TMyTable::Create_Alter_Table_Statements() const {
+   auto attributes = Attributes() | std::views::filter([](auto const& attr) { return attr.IsComputed(); });
+   auto maxLength = std::ranges::max_element(attributes, [](auto const& a, auto const& b) { return a.DBName().size() < b.DBName().size(); });
+   if (maxLength != attributes.end()) {
+      auto len = maxLength->DBName().size();
+      return attributes | std::views::transform([this](auto const& attr) {
+         return std::format("ALTER TABLE {} ADD {} AS ({})", FullyQualifiedSQLName(), attr.DBName(), attr.Computed()); })
+         | std::ranges::to<std::vector<std::string>>();
+      }
+   else return { };
    }
-   catch (std::exception& ex) {
-      std::cerr << ex.what() << '\n';
-      return false;
+
+
+myStatements TMyTable::Create_Primary_Key_Statements() const {
+   myStatements ret;
+   std::ostringstream os;
+   os << "ALTER TABLE " << FullyQualifiedSQLName() << " ADD CONSTRAINT pk_" << SQLName() << " PRIMARY KEY (";
+   size_t i = 0;
+   auto key_attr = Attributes() | std::views::filter([](auto const& a) { return a.Primary() == true; });
+   std::ranges::for_each(key_attr, [&os, &i](auto const& a) { os << (i++ > 0 ? ", " : "") << a.DBName();  });
+   if (i > 0) {
+      os << ")";
+      ret.emplace_back(os.str());
+      }
+   return ret;
    }
-   return true;
+
+myStatements TMyTable::Create_Foreign_Keys_Statements() const {
+   return References() | std::views::transform([](auto const& ref) { return ref.SQLRow(); }) | std::ranges::to<std::vector<std::string>>();
+   }
+
+myStatements TMyTable::Create_Unique_Keys_Statements() const {
+   return Indices() | std::views::filter([](auto const& i) { return i.IndexType() == EMyIndexType::key; })
+                    | std::views::transform([](auto const& i) { return i.SQLRow(); }) 
+                    | std::ranges::to<std::vector<std::string>>();
+   }
+
+myStatements TMyTable::Check_Conditions_Statements() const {
+   return Attributes() | std::views::transform([this](auto const& attr) {
+                           return std::make_pair(attr, Dictionary().FindDataType(attr.DataType())); })
+                       | std::views::filter([](auto const& data) {
+                           return data.first.CheckSeq().size() > 0 || data.second.CheckSeq().size() > 0; })
+                       | std::views::transform([this](auto const& data) {
+                           auto Exists = [](auto const& val) { return val.CheckSeq().size() > 0; };
+                           std::ostringstream os;
+                           os << std::format("ALTER TABLE {} ADD CONSTRAINT ck_{}_{} CHECK (", FullyQualifiedSQLName(), SQLName(), data.first.DBName());
+                           if (Exists(data.first) && Exists(data.second)) os << std::format("{0} {1} AND {0} {2}", data.first.DBName(), data.second.CheckSeq(), data.first.CheckSeq());
+                           else if (Exists(data.first))  os << std::format("{0} {1}", data.first.DBName(), data.first.CheckSeq());
+                           else if (Exists(data.second)) os << std::format("{0} {1}", data.first.DBName(), data.second.CheckSeq());
+                           os << ")";
+                           return os.str();
+                           })
+                       | std::ranges::to<std::vector<std::string>>();
+   }
+
+myStatements TMyTable::Create_Indices_Statements() const {
+   return Indices() | std::views::filter([](auto const& i) { return i.IndexType() != EMyIndexType::key; })
+                    | std::views::transform([](auto const& i) { return i.SQLRow(); }) 
+                    | std::ranges::to<std::vector<std::string>>();
 }
+
+myStatements TMyTable::Create_RangeValues_Statements() const {
+   return RangeValues();
+   }
+
+myStatements TMyTable::Create_PostConditions_Statements() const {
+   return PostConditions();
+   }
+
+myStatements TMyTable::Create_Cleaning_Statements() const {
+   return Cleanings();
+   }
+
+bool TMyTable::SQL_Create_Table(std::ostream& os, bool boAll) const {
+   // possibly add a comment -- create table ... 
+   auto statements = Create_Table_Statements(boAll);
+   std::ranges::for_each(statements, [&os](auto const& p) { os << p << ";\n"; });
+   return statements.size() > 0;
+   }
+
+bool TMyTable::SQL_Create_Alter_Table(std::ostream& os) const {
+   auto statements = Create_Alter_Table_Statements();
+   std::ranges::for_each(statements, [&os](auto const& p) { os << p << ";\n"; });
+   return statements.size() > 0;
+}
+
 
 bool TMyTable::SQL_Create_Primary_Key(std::ostream& os) const {
-   try {
-      std::ostringstream tmp_os;
-      tmp_os << "ALTER TABLE " << FullyQualifiedSQLName() << " ADD CONSTRAINT pk_" << SQLName() << " PRIMARY KEY (";
-      size_t i = 0;
-      std::ranges::for_each(Attributes() | std::views::filter([](auto const& a) { return a.Primary() == true; }),
-         [&tmp_os, &i](auto const& a) { tmp_os << (i++ > 0 ? ", " : "") << a.DBName();  });
-      if (i > 0) os << tmp_os.str() << ");\n";
+   // possibly add a comment -- create primary key for table ... 
+   auto statements = Create_Primary_Key_Statements();
+   std::ranges::for_each(statements, [&os](auto const& p) { os << p << ";\n"; });
+   return statements.size() > 0;
    }
-   catch (std::exception& ex) {
-      std::cerr << ex.what() << '\n';
-      return false;
-   }
-   return true;
-}
 
 bool TMyTable::SQL_Create_Foreign_Keys(std::ostream& os) const {
-   try {
-      if (!References().empty()) {
-         std::ranges::for_each(References(), [&os](auto ref) { os << ref.SQLRow() << ";\n";  });
-         os << '\n';
-      }
+   // possibly add a comment -- create foreign keys for table ... 
+   auto statements = Create_Foreign_Keys_Statements();
+   std::ranges::for_each(statements, [&os](auto const& p) { os << p << ";\n"; });
+   return statements.size() > 0;
    }
-   catch (std::exception& ex) {
-      std::cerr << ex.what() << '\n';
-      return false;
-   }
-   return true;
-}
 
 bool TMyTable::SQL_Create_Unique_Keys(std::ostream& os) const {
-   try {
-      auto unique_keys = Indices() | std::views::filter([](auto const& i) { return i.IndexType() == EMyIndexType::key; });
-      if (!unique_keys.empty()) {
-         std::ranges::for_each(unique_keys, [&os](auto ref) { os << ref.SQLRow() << ";\n";  });
-         os << '\n';
-      }
+   // possibly add a comment -- create unique keys for table ... 
+   auto statements = Create_Unique_Keys_Statements();
+   std::ranges::for_each(statements, [&os](auto const& p) { os << p << ";\n"; });
+   return statements.size() > 0;
    }
-   catch (std::exception& ex) {
-      std::cerr << ex.what() << '\n';
-      return false;
-   }
-   return true;
-}
 
 bool TMyTable::SQL_Create_Indices(std::ostream& os) const {
-   try {
-      auto indices = Indices() | std::views::filter([](auto const& i) { return i.IndexType() != EMyIndexType::key; });
-      if (!indices.empty()) {
-         std::ranges::for_each(indices, [&os](auto ref) { os << ref.SQLRow() << ";\n";  });
-         os << '\n';
-      }
+   // possibly add a comment -- create indices for table ... 
+   auto statements = Create_Indices_Statements();
+   std::ranges::for_each(statements, [&os](auto const& p) { os << p << ";\n"; });
+   return statements.size() > 0;
    }
-   catch (std::exception& ex) {
-      std::cerr << ex.what() << '\n';
-      return false;
-   }
-   return true;
-}
 
 bool TMyTable::SQL_Create_Check_Conditions(std::ostream& os) const {
-   auto processing_data = Attributes() | std::views::transform([this](auto const& attr) {
-                                             return std::make_pair(attr, Dictionary().FindDataType(attr.DataType())); })
-                                       | std::views::filter([](auto const& data) {
-                                             return data.first.CheckSeq().size() > 0 || data.second.CheckSeq().size() > 0;
-                                             })
-                                       | std::ranges::to<std::vector>();
+   // possibly add a comment -- create check conditions for table ...
+   auto statements = Check_Conditions_Statements();
+   std::ranges::for_each(statements, [&os](auto const& p) { os << p << ";\n"; });
+   return statements.size() > 0;
+   }
 
-   // create check conditions for this table
-   std::ranges::for_each(processing_data, [this, &os](auto const& p) {
-                   auto Exists = [](auto const& val) { return val.CheckSeq().size() > 0; };
-                   os << std::format("ALTER TABLE {} ADD CONSTRAINT ck_{}_{} CHECK (", FullyQualifiedSQLName(), SQLName(), p.first.DBName());
-                   if (Exists(p.first) && Exists(p.second)) os << std::format("{0} {1} AND {0} {2}", p.first.DBName(), p.second.CheckSeq(), p.first.CheckSeq());
-                   else if(Exists(p.first))  os << std::format("{0} {1}", p.first.DBName(), p.first.CheckSeq());
-                   else if(Exists(p.second)) os << std::format("{0} {1}", p.first.DBName(), p.second.CheckSeq());
-                   os << ");\n";
-                   });
-   return true;
+bool TMyTable::SQL_Create_RangeValues(std::ostream& os) const {
+   auto statements = Create_RangeValues_Statements();
+   std::ranges::for_each(statements, [&os](auto const& p) { os << p << ";\n"; });
+   return statements.size() > 0;
+   }
+
+bool TMyTable::SQL_Create_PostConditions(std::ostream& os) const {
+   auto statements = Create_PostConditions_Statements();
+   std::ranges::for_each(statements, [&os](auto const& p) { os << p << ";\n"; });
+   return statements.size() > 0;
+   }
+
+bool TMyTable::SQL_Create_Cleaning(std::ostream& os) const {
+   auto statements = Create_Cleaning_Statements();
+   std::ranges::for_each(statements, [&os](auto const& p) { os << p << ";\n"; });
+   return statements.size() > 0;
    }
 
 bool TMyTable::SQL_Create_Descriptions(std::ostream& os) const {
    return true;
-}
+   }
 
 /*
 DECLARE @TableName NVARCHAR(255) = 'IhreTabelle'; -- Geben Sie den Tabellennamen hier ein
@@ -166,3 +227,91 @@ EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Dies ist eine 
 EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Dies ist eine Beschreibung für den Index.', @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'TABLE', @level1name=@TableName, @level2type=N'INDEX', @level2name=N'IhrIndex';
 
 */
+ 
+bool TMyDictionary::Create_SQL_Tables(std::ostream& os) const {
+
+   os << "/* ------------------------------------------------------------------------------------\n"
+      << " * script with statements to create tables for the project " << Name() << '\n'
+      << " * generated at: " << CurrentTimeStamp() << " with the adecc Scholar metadata generator\n"
+      << " * author:       " << Author() << '\n'
+      << " * copyright © " << Copyright() << '\n'
+      << " * ------------------------------------------------------------------------------------ */\n\n";
+
+   for (auto const& [_, table] : Tables()) {
+      table.SQL_Create_Table(os, false);
+      os << '\n';
+      if (table.SQL_Create_PostConditions(os)) os << '\n';
+      }
+
+   return true;
+   }
+
+bool TMyDictionary::Create_SQL_Additionals(std::ostream& os) const {
+   os << "/* ------------------------------------------------------------------------------------\n"
+      << " * script with keys, references and indices for the project " << Name() << '\n'
+      << " * generated at: " << CurrentTimeStamp() << " with the adecc Scholar metadata generator\n"
+      << " * author:       " << Author() << '\n'
+      << " * copyright © " << Copyright() << '\n'
+      << " * ----------------------------------------------------------------------------------- */\n";
+
+   os << "\n-- alter tables with calculated columns " << Name() << '\n';
+   for (auto const& [_, table] : Tables())  if (table.SQL_Create_Alter_Table(os)) os << '\n';
+
+   os << "\n-- create primary keys for tables of the dictionary " << Name() << '\n';
+   for (auto const& [_, table] : Tables())  if(table.SQL_Create_Primary_Key(os)) os << '\n';
+ 
+   os << "\n-- create unique keys for tables of the dictionary " << Name() << '\n';
+   for (auto const& [_, table] : Tables()) if(table.SQL_Create_Unique_Keys(os)) os << '\n';
+    
+   os << "\n-- create foreign keys for tables of the dictionary " << Name() << '\n';
+   for (auto const& [_, table] : Tables()) if(table.SQL_Create_Foreign_Keys(os)) os << '\n'; 
+
+   os << "\n-- create check conditions for tables of the dictionary " << Name() << '\n';
+   for (auto const& [_, table] : Tables()) if(table.SQL_Create_Check_Conditions(os)) os << '\n';
+   
+   os << "\n-- create indices for tables of the dictionary " << Name() << '\n';
+   for (auto const& [_, table] : Tables()) if(table.SQL_Create_Indices(os)) os << '\n';
+
+   return true;
+   }
+
+
+bool TMyDictionary::Create_SQL_RangeValues(std::ostream& os) const {
+   os << "/* ------------------------------------------------------------------------------------\n"
+      << " * script with statements to prefill the rangevalues for the project " << Name() << '\n'
+      << " * generated at: " << CurrentTimeStamp() << " with the adecc Scholar metadata generator\n"
+      << " * author:       " << Author() << '\n'
+      << " * copyright © " << Copyright() << '\n'
+      << " * ----------------------------------------------------------------------------------- */\n";
+
+   for (auto const& [_, table] : Tables()) if (table.SQL_Create_RangeValues(os)) os << '\n';
+   
+   return true;
+   }
+
+bool TMyDictionary::SQL_Drop_Tables(std::ostream& os) const {
+   os << "/* ------------------------------------------------------------------------------------\n"
+      << " * script to drop relationships and tables for the project " << Name() << '\n'
+      << " * generated at: " << CurrentTimeStamp() << " with the adecc Scholar metadata generator\n"
+      << " * author:       " << Author() << '\n'
+      << " * copyright © " << Copyright() << '\n'
+      << " * ----------------------------------------------------------------------------------- */\n\n"
+      << " -- drop foreign keys to erase dependencies\n";
+
+   for (auto const& [_, table] : Tables()) {
+      std::ranges::for_each(table.References(), [&os, &table](auto ref) {
+            os << "ALTER TABLE "s + table.FullyQualifiedSQLName() << " DROP CONSTRAINT "s << ref.Name() << ";\n"s; });
+      if(!table.References().empty()) os << '\n';
+      }
+
+   os << "\n-- drop all tables\n";
+   for (auto const& [_, table] : Tables()) os << std::format("DROP TABLE {};\n", table.FullyQualifiedSQLName());
+
+   os << "\n-- run cleanings for added informations\n";
+   for (auto const& [_, table] : Tables()) if (table.SQL_Create_Cleaning(os)) os << '\n';
+
+   return true;
+   }
+
+
+
