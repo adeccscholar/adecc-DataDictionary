@@ -1,0 +1,5 @@
+\page pgadeccDatabase adecc Database
+\tableofcontents
+\section secDatabasePreamble Description of the project / libary adecc Database
+C++20 Interface to databases, which initially only supports Qt6. When a C++20 compiler becomes available
+we will try to implement this for Embarcadero FireDac(tm) as well.

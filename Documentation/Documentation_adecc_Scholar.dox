@@ -1,0 +1,57 @@
+\page pgadeccScholar adecc Scholar
+\tableofcontents
+\section secScholarPreamble Description of the project / libary adecc Scholar
+The adecc Scholar project is a free offer from Volker Hillmann and adecc Systemhaus GmbH to impart C++ know-how 
+on the Twitch channel <a href="https://www.twitch.tv/volker_adecc">adecc Scholar</a>. 
+As part of the livestreams, not only webinars / lectures were offered, but also project work was carried out. 
+This includes the library <a href="https://github.com/adeccscholar/adecc_Scholar">adecc Scholar</a>, 
+in which an interface to different graphical user interfaces - frameworks is provided.
+
+I have placed them under MIT license, so the sources can be used by anyone without restrictions. Please note that 
+these are training examples, so we do not assume any guarantee. The aim was not the safe productive use, 
+but the imparting of knowledge.
+
+Some of the classes are not complete, but only hint at the learning content.
+
+To use the header - only library from the semester break, one of the following constants must be defined
+
+\li BUILD_WITH_VCL, C++Builder or RAD Studio 10.3 or higher with Windows application(VCL)
+\li BUILD_WITH_FMX, C++Builder or RAD Studio 10.3 or higher with platform - independent application(FMX)
+\li BUILD_WITH_QT - for Visual Studio with Qt6 and with the Qt Creator
+
+Please send questions and suggestions via the Discord Server for adecc Scholar
+
+\section secScholarName Why we call it adecc Scholar? 
+\details adecc is a registered trademark of adecc Systemhaus GmbH. The term scholar refers to the German
+Word <a href ="https://de.wikipedia.org/wiki/Scholar">Scholar</a> use of the traveling, location-independent 
+teacher in the Middle Ages. Since the offer via the Internet is location-independent and is provided 
+independently of universities of applied sciences, other teaching institutions or companies, we have added 
+German word "Scholar", a traveling teacher. 
+Thus, the combination of the protected trademark trademark "adecc" and the German word "Scholar".
+
+\section secScholarIdea From the wish list to the independent program
+At events and training courses, we have often claimed that it is easy to start with a wish list and use it to design 
+a platform-independent program in C++, and that it should be possible to start immediately and be easily integrated 
+into any project so that you don't always have to start from scratch. We have already shown this approach with the 
+two libraries from Embarcadero, VCL on the one hand and Firemonkey(FMX) on the other, but these two libraries are 
+based on the same Delphi code and have a similar structure, so can this be generalized at all?
+
+During the semester break between our lectures on the adecc Scholar platform, we repeated this from the beginning 
+in a semester project and finally extended it to the independent interface library Qt6 and Visual Studio 2019 
+(later Visual Studio 2022) as a development platform.
+
+The various possibilities of the new standards C++11, C++14, C++20 and C++23 naturally help considerably in writing 
+such a library. Unfortunately, the use of the Embarcadero C++Builder does not yet make it possible to use C++20, 
+although concepts would help to make the implementation more compact and robust, but fortunately the type treats of 
+C++11 and the compiletime command options of C++17 are precursors that help us with the implementation.
+
+This already answers the question, of course it is possible to start with an interface, let's just call it a wish list, 
+and create an independent solution for standard C++. the C++ language contains all the necessary abstractions, data types 
+and containers. the wish list should be as short as possible, we should not orient ourselves on what would be possible 
+with the respective frameworks, but always only on what we really need. this can be extended step by step later.
+
+The project was not about an extensive and complex interface, but about using a few components and properties to show how 
+this can be modeled and ultimately implemented.in addition to direct access to the components (read and write), C++ streams 
+were also used to design outputs independently of the framework.these can not only be used to describe text fields 
+(for the VCL memo fields), but also to fill tables.the ListView component was used for the VCL, a StringGrid for FMX and a 
+TableWidget for Qt.
