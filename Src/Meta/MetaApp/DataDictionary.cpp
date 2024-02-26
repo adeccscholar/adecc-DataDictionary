@@ -30,6 +30,8 @@
 #include <filesystem>
 #include <format>
 #include <ranges>
+#include <regex>
+#include <cctype>
 
 namespace fs = std::filesystem;
 using namespace std::string_literals;
@@ -43,10 +45,28 @@ std::tuple<std::string, bool, std::string, std::string, std::string, std::string
    return std::make_tuple(dt.SourceType(), dt.UseReference(), dt.Prefix(),  dt.InitSeq(), dt.Headerfile());
    }
 */
+TMyAttribute& TMyAttribute::AddDescription(std::string const& pText) {
+   if (Description().size() > 0) {
+      Description() += "\n"s;
+      Description() += pText;
+      }
+   else Description() = pText;
+   return *this;
+   }
+
+TMyAttribute& TMyAttribute::AddComment(std::string const& pText) {
+   if (Comment().size() > 0) {
+      Comment() += "\n"s;
+      Comment() += pText;
+      }
+   else Comment() = pText;
+   return *this;
+   }
+
 
 
 std::string TMyAttribute::Comment_Attribute() const {
-   if (Comment().size() > 0) return Comment();
+   if (Denotation().size() > 0) return Denotation();
    else {
       std::ostringstream sComment;
       sComment << "attribute \"" << Name() << "\" in entity \"" << table.SourceName() << "\"";
@@ -119,18 +139,65 @@ std::string TMyIndices::SQLRow() const {
 
 // TMyTable
 
+std::set<std::string> TMyTable::GetPrecursors(bool boAll) const {
+   std::set<std::string> retval ;
+   // seek all generalizations
+   auto parents = References() | std::views::filter([](auto const& r) { 
+                                            return r.ReferenceType() == EMyReferenceType::generalization ||
+                                                   r.ReferenceType() == EMyReferenceType::composition ||
+                                                   r.ReferenceType() == EMyReferenceType::range; })
+                               | std::views::transform([this](auto const& r) { return Dictionary().FindTable(r.RefTable()).Name(); })
+                               ;
+
+   std::ranges::copy(parents, std::inserter(retval, retval.end()));
+
+   if (boAll) {
+      std::ranges::for_each(parents, [this, &retval](std::string const& tab) {
+         auto succ = Dictionary().FindTable(tab).GetPrecursors(true);
+         std::ranges::copy(succ, std::inserter(retval, retval.end()));
+         });
+   }
+
+   return retval;
+   }
+
+std::set<std::string> TMyTable::GetSuccessors(bool boAll) const {
+   std::set<std::string> retval;
+   // seek all part of relationships
+   auto condition = [this](TMyTable const& table) {
+      return std::ranges::any_of(table.References(), [this](TMyReferences const& value) { 
+                    return value.RefTable() == Name() && (value.ReferenceType() == EMyReferenceType::generalization ||
+                                                          value.ReferenceType() == EMyReferenceType::composition ||
+                                                          value.ReferenceType() == EMyReferenceType::range); });
+      };
+
+   auto parents = Dictionary().Tables() | std::views::filter([this](auto const& t) { return t.first != Name(); })
+                                        | std::views::transform([this](auto const& t) -> TMyTable const& { return t.second; })
+                                        | std::views::filter(condition)
+                                        | std::views::transform([](auto const& t)  { return t.Name(); });
+
+   std::ranges::copy(parents, std::inserter(retval, retval.end()));
+   if(boAll) {
+      std::ranges::for_each(parents, [this, &retval](std::string const& tab) {
+            auto succ = Dictionary().FindTable(tab).GetSuccessors(true);
+            std::ranges::copy(succ, std::inserter(retval, retval.end()));
+            });
+      }
+   return retval;
+   }
+
 /// \brief seek all parents of a table to add headers and use the data for processing
-std::vector<TMyTable> TMyTable::GetParents() const {
-   return References() | std::views::filter([](auto const& r) { return r.ReferenceType() == EMyReferenceType::generalization; })
+std::vector<TMyTable> TMyTable::GetParents(EMyReferenceType ref_type) const {
+   return References() | std::views::filter([&ref_type](auto const& r) { return r.ReferenceType() == ref_type; })
                        | std::views::transform([this](auto const& r) { return Dictionary().FindTable(r.RefTable()); }) 
                        | std::ranges::to<std::vector<TMyTable>>();
    }
 
 /// \brief seek all compositions to this table to add header files and data for processing
 /// \details compositions only possible when the primary key of the holding table a part of composed table and in the reference
-std::vector<TMyTable::my_part_of_type> TMyTable::GetPart_ofs() const {
-   auto filter_refs = [this](auto const& r) {
-      return r.RefTable() == Name() && r.ReferenceType() == EMyReferenceType::composition;
+std::vector<TMyTable::my_part_of_type> TMyTable::GetPart_ofs(EMyReferenceType ref_type) const {
+   auto filter_refs = [this, ref_type](auto const& r) {
+      return r.RefTable() == Name() && r.ReferenceType() == ref_type;
       };
 
    // retval for the function
@@ -141,31 +208,27 @@ std::vector<TMyTable::my_part_of_type> TMyTable::GetPart_ofs() const {
       auto composed = ref_table.References() | std::views::filter(filter_refs) | std::ranges::to<std::vector>();
    
       // there should be only 1, otherwise is there an error
-      if(composed.size() == 1) {      
-         auto comp_keys = composed[0].Values() | std::views::transform([](auto const& p) { return p.first; }) | std::ranges::to<std::set>();
+      //if(composed.size() == 1) {
+      for(auto const& comp_val : composed) {      
+         auto comp_keys = comp_val.Values() | std::views::transform([](auto const& p) { return p.first; }) | std::ranges::to<std::set>();
 
          // seek for primary keys which are NOT in the reference, this are the keys for the composed datatype
          auto filter_prim = [&comp_keys](auto const& attr) { 
             return attr.Primary() && comp_keys.find(attr.ID()) == comp_keys.end(); 
             };
 
-         std::string strTypeName = "ty_for_" + ref_table.Name();
-         std::string strVarName  = "the" + ref_table.Name();
+         std::string strTypeName;
+         std::transform(ref_table.Name().begin(), ref_table.Name().end(), std::back_inserter(strTypeName), [](char c) { return std::tolower(c); });
+         strTypeName += "_ty";
+         std::string strVarName  = "m_" + ref_table.Name();
 
          // vector with the keys of the composed table which are not part of the reference, part of the retval type
          auto prim_keys = ref_table.Attributes() | std::views::filter(filter_prim)
                                                  | std::views::transform([](auto const& attr) { return attr.ID(); })
                                                  | std::ranges::to<std::vector<size_t>>();
          
-         /*
-         auto find_key = [&comp_keys](size_t val) { 
-            return std::ranges::find_if(comp_keys, [&val](size_t e) { return e == val;  }) != comp_keys.end();
-            };
-         */
-
-         //std::ranges::for_each(composed[0].Values(), [](std::pair<size_t, size_t>& p) { std::swap(p.first, p.second); });
          // swap the referenced values that the first value represented attributes of own table
-         auto swapped = composed[0].Values() | std::views::transform([](const auto& pair) {
+         auto swapped = comp_val.Values() | std::views::transform([](const auto& pair) {
                                                     return std::make_pair(pair.second, pair.first);
                                                     }) | std::ranges::to<std::vector>();
 
@@ -175,17 +238,6 @@ std::vector<TMyTable::my_part_of_type> TMyTable::GetPart_ofs() const {
       }
    return parts;
    }
-
-/*
-// generates datatypes, attribute name, und table + data of relationship
-auto composition_values = part_of_data | std::views::transform([](auto const& data) {
-   auto const& [tab, ref] = data; // split pair in both elements, the composed table and the data for the relationship
-   std::string strTypeName = "ty"s + tab.Name();
-   std::string strMember = "m"s + tab.Name();
-   return std::make_tuple(strTypeName, strMember, tab, ref);
-   }) | std::ranges::to<std::vector>();
-
-*/
 
 /// \brief build a container with pairs of attributes with database informations to this
 std::vector<std::pair<TMyAttribute, TMyDatatype>> TMyTable::GetProcessing_Data() const {
@@ -214,20 +266,57 @@ TMyAttribute const& TMyTable::FindAttribute(size_t iID) const {
 }
 
 TMyTable& TMyTable::AddDescription(std::string const& pDescription) {
-   Description() += ("\n"s + pDescription);
+   if (Description().size() > 0) Description() += "\n"s;
+   Description() += pDescription;
    return *this;
    }
 
 TMyTable& TMyTable::AddComment(std::string const& pComment) {
-   Comment() += ("\n"s + pComment);
+   if (Comment().size() > 0) Comment() += "\n"s;
+   Comment() += pComment;
    return *this;
    }
 
 
 TMyTable& TMyTable::AddAttribute(int pID, std::string const& pName, std::string const& pDBName, std::string const& pDataType,
                                  size_t pLen, size_t pScale, bool pNotNull, bool pPrimary, std::string const& pCheck, 
-                                 std::string const& pInit, std::string const& pComputed, std::string const& pComment) {
-   Attributes().emplace_back(TMyAttribute(*this, pID, pName, pDBName, pDataType, pLen, pScale, pNotNull, pPrimary, pCheck, pInit, pComputed, pComment));
+                                 std::string const& pInit, std::string const& pComputed, std::string const& pDenotation) {
+   auto determineCondition = [](const std::string& str) -> std::pair<int, std::string> {
+      static std::regex parser(R"((^\((.*)\)$)|(^\[(.*)\]$)|(^\{(.*)\}$))"); // Regex für (), [] oder {}
+      std::smatch match;
+      if (str.empty()) return { 0, ""s };
+      if (std::regex_match(str, match, parser)) {
+         if (match[1].matched)      return { 1, match[2] }; // () found, retval of 1 and the text inside the brackets
+         else if (match[3].matched) return { 2, match[4] }; // [] found, retval of 2 and the text inside the brackets
+         else if (match[5].matched) return { 3, match[6] }; // {} found, retval of 3 and the text inside the brackets
+         }
+      return { 4, str }; // others, retval of 4 with the parameter
+      };
+
+   auto [computed_type, str_computed] = determineCondition(pComputed);
+   
+   EMyCalculationKinds calc_kind;
+   switch(computed_type) {
+      case 4: calc_kind = EMyCalculationKinds::attribute; break;
+      case 1: calc_kind = EMyCalculationKinds::attribute_permanent; break;
+      case 2: calc_kind = EMyCalculationKinds::table; break;
+      case 3: calc_kind = EMyCalculationKinds::table_permanent; break;
+      default: calc_kind = EMyCalculationKinds::undefined;
+      }
+
+   auto [check_type, str_check] = determineCondition(pCheck);
+   
+   EMyCheckKinds check_kind;
+   switch (check_type) {
+      case 1:  check_kind = EMyCheckKinds::attribute; break;
+      case 4:  check_kind = EMyCheckKinds::direct; break;
+      case 3:  // following {} and []
+      case 2:  check_kind = EMyCheckKinds::table; break;
+      default: check_kind = EMyCheckKinds::undefined;
+      }
+
+   Attributes().emplace_back(TMyAttribute(*this, pID, pName, pDBName, pDataType, pLen, pScale, pNotNull, pPrimary, str_check, check_kind, pInit,
+                                          str_computed, calc_kind, pDenotation));
    return *this;
    }
 
@@ -302,24 +391,58 @@ TMyTable& TMyDictionary::AddTable(std::string const& pName, EMyEntityType pType,
    else return val->second;
    }
 
-TMyNameSpace& TMyDictionary::AddNameSpace(std::string const& pName, std::string const& pDonation, std::string const& pDescription) {
-   TMyNameSpace theSpace(*this, pName, pDonation, pDescription);
+TMyNameSpace& TMyDictionary::FindNameSpace(std::string const& pName) {
+   if (auto it = namespaces.find(pName); it == namespaces.end()) [[unlikely]] throw std::runtime_error("namespace \""s + pName + "\" couldn't found."s);
+   else return it->second;
+   }
+
+TMyNameSpace const& TMyDictionary::FindNameSpace(std::string const& pName) const {
+   if (auto it = namespaces.find(pName); it == namespaces.end()) [[unlikely]] throw std::runtime_error("namespace \""s + pName + "\" couldn't found."s);
+   else return it->second;
+   }
+
+TMyDictionary& TMyDictionary::AddNameSpace(std::string const& pName, std::string const& pDenotation, std::string const& pDescription, std::string const& pComment) {
+   TMyNameSpace theSpace(*this, pName, pDenotation, pDescription, pComment);
    auto [val, success] = namespaces.emplace(myNameSpaces::value_type{ pName, std::forward<TMyNameSpace>(theSpace) });
    if (!success) [[unlikely]] throw std::runtime_error("namespace \""s + pName + "\" couldn't inserted."s);
-   else return val->second;
+   else return *this;
    }
+
+TMyDirectory& TMyDictionary::FindDirectory(std::string const& pName) {
+   if (auto it = directories.find(pName); it == directories.end()) [[unlikely]] throw std::runtime_error("namespace \""s + pName + "\" couldn't found."s);
+   else return it->second;
+   }
+
+TMyDirectory const& TMyDictionary::FindDirectory(std::string const& pName) const {
+   if (auto it = directories.find(pName); it == directories.end()) [[unlikely]] throw std::runtime_error("namespace \""s + pName + "\" couldn't found."s);
+   else return it->second;
+   }
+
+TMyDictionary& TMyDictionary::AddDirectory(std::string const& pName, std::string const& pDenotation, std::string const& pDescription) {
+   TMyDirectory theDir(*this, pName, pDenotation, pDescription);
+   auto [val, success] = directories.emplace(myDirectories::value_type{ pName, std::forward<TMyDirectory>(theDir) });
+   if (!success) [[unlikely]] throw std::runtime_error("directory \""s + pName + "\" couldn't inserted."s);
+   else return *this;
+   }
+
 
 
 void TMyDictionary::CreateTable(std::string const& strTable, std::ostream& out) const {
    auto const& table = FindTable(strTable);
-   table.SQL_Create_Table(out, false);
-   table.SQL_Create_PostConditions(out);
-   table.SQL_Create_Alter_Table(out);
-   table.SQL_Create_Primary_Key(out);
-   table.SQL_Create_Foreign_Keys(out);
-   table.SQL_Create_Unique_Keys(out);
-   table.SQL_Create_Indices(out);
-   table.SQL_Create_RangeValues(out);
+   if(table.EntityType() != EMyEntityType::view) {
+      table.SQL_Create_Table(out);
+      table.SQL_Create_PostConditions(out);
+      table.SQL_Create_Alter_Table(out);
+      table.SQL_Create_Primary_Key(out);
+      table.SQL_Create_Foreign_Keys(out);
+      table.SQL_Create_Unique_Keys(out);
+      table.SQL_Create_Indices(out);
+      table.SQL_Create_RangeValues(out);
+      }
+   else {
+      table.SQL_Create_View(out);
+      }
+
    }
 
 
@@ -334,7 +457,7 @@ void  TMyDictionary::Create_All(std::ostream& out, std::ostream& err) const {
    try {
       out << "Dictionary:  " << Name() << '\n'
           << "Identifier:  " << Identifier() << '\n'
-          << "Denotation:  " << Description() << '\n'
+          << "Denotation:  " << Denotation() << '\n'
           << "Version:     " << Version() << '\n'
           << "Author:      " << Author() << '\n'
           << "Date:        " << CurrentTimeStamp() << '\n';
@@ -366,10 +489,14 @@ void  TMyDictionary::Create_All(std::ostream& out, std::ostream& err) const {
       SQL_Drop_Tables(of_sql);
       of_sql.close();
 
+      of_sql.open(sqlPath / "add_documentation.sql");
+      Create_SQL_Documentation(of_sql);
+      of_sql.close();
 
       // create the general documentation page with all informations
       fs::path doxPath = DocPath();
       fs::create_directories(doxPath);
+      out << "create documentation files in directory: " << doxPath.string() << '\n';
       std::ofstream of_dox(doxPath / (Identifier() + ".dox"s));
       Create_Doxygen(of_dox);
       of_dox.close();
@@ -386,6 +513,17 @@ void  TMyDictionary::Create_All(std::ostream& out, std::ostream& err) const {
 
       out << "\ncreate source files in directory: " << SourcePath().string() << '\n';
 
+      // ---------create base header when used ----------------------------
+      if(UseBaseClass()) {
+         auto srcPath = SourcePath() / PathToBase();
+         fs::create_directories(srcPath.parent_path());
+         std::ofstream of_base(srcPath);
+         of_base << "\\test\n";
+         if(of_base) CreateBaseHeader(of_base);
+         }
+
+
+      // ---- create header and source files for tables -------------------
       for (auto const& [name, table] : Tables()) {
          auto srcPath = SourcePath() / table.SrcPath();
          fs::create_directories(srcPath);
@@ -408,4 +546,28 @@ void  TMyDictionary::Create_All(std::ostream& out, std::ostream& err) const {
    catch(std::exception& ex) {
       err << ex.what() << '\n';
       }
+   }
+
+
+
+void TMyDictionary::Test() const {
+   auto  sort_func = [this](std::string const& lhs, std::string const& rhs) -> bool {
+         auto prec = FindTable(lhs).GetPrecursors();
+         if (prec.find(rhs) != prec.end()) {
+            return false;
+            }
+         else {
+            auto succ = FindTable(lhs).GetSuccessors();
+            if (succ.find(rhs) != succ.end()) {
+               return true;
+            }
+            else return false; // lhs < rhs;
+            }
+         };
+
+   std::vector<std::string> work;
+   std::ranges::copy(tables | std::views::transform([](auto const& t) { return t.first; }), std::back_inserter(work));
+   std::ranges::sort(work, sort_func);
+
+   std::ranges::for_each(work, [](auto const& t) { std::cout << t << "\n"; });
    }

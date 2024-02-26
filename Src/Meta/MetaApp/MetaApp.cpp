@@ -43,11 +43,19 @@ int main() {
    TDictionary_Test dict_data;
   
    /// defining the paths for the output during metadata processing
+
    dict_data.Dictionary().SourcePath("D:\\Test\\Persons\\Src");
    dict_data.Dictionary().SQLPath("D:\\Test\\Persons\\SQL");
    dict_data.Dictionary().DocPath("D:\\Test\\Persons\\Documentation");
 
    try {
+      if(false) {
+         auto test1 = dict_data.Dictionary().FindTable("Employees").GetPrecursors();
+         std::ranges::for_each(test1, [](auto t) { std::cout << t << "\n";  });
+         auto test2 = dict_data.Dictionary().FindTable("Employees").GetSuccessors();
+         std::ranges::for_each(test2, [](auto t) { std::cout << t << "\n";  });
+         // dict_data.Dictionary().Test();
+         }
       dict_data.Dictionary().Create_All(std::cout, std::cerr);
       }
    catch(std::exception& ex) {

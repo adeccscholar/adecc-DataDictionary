@@ -17,6 +17,7 @@
 #include <string>
 #include <tuple>
 #include <map>
+#include <set>
 #include <vector>
 #include <ranges>
 #include <format>
@@ -87,10 +88,14 @@ public:
 
 using myDataTypes = std::map<std::string, TMyDatatype>;
 
+enum class EMyCheckKinds : uint32_t { undefined = 0, direct, attribute, table };
+enum class EMyCalculationKinds : uint32_t { undefined = 0, attribute, attribute_permanent, table, table_permanent };
+
 
 class TMyAttribute {
 private:
-   using myData = std::tuple<int, std::string, std::string, std::string, size_t, size_t, bool, bool, std::string, std::string, std::string, std::string>;
+   using myData = std::tuple<int, std::string, std::string, std::string, size_t, size_t, bool, bool, std::string, 
+                             EMyCheckKinds, std::string, std::string, EMyCalculationKinds, std::string, std::string, std::string>;
    myData data;
    TMyTable const& table;
 public:
@@ -104,29 +109,41 @@ public:
    auto const& GetKey() const { return std::get<0>(data); }
 
    TMyAttribute(TMyTable const& pTable, int pID, std::string const& pName, std::string const& pDBName, std::string const& pDataType,
-                size_t pLen, size_t pScale, bool pNotNull, bool pPrimary, std::string const& pCheck,
-                std::string const& pInit, std::string const& pComputed, std::string const& pComment) :
+                size_t pLen, size_t pScale, bool pNotNull, bool pPrimary, std::string const& pCheck, EMyCheckKinds pCheckKind,
+                std::string const& pInit, std::string const& pComputed, EMyCalculationKinds pCalcKind, std::string const& pDenotation) :
       table { pTable },
-      data{ myData { pID, pName, pDBName, pDataType, pLen, pScale, pNotNull, pPrimary, pCheck, pInit, pComputed, pComment} } { }
+      data{ myData { pID, pName, pDBName, pDataType, pLen, pScale, pNotNull, pPrimary, pCheck, pCheckKind, pInit, pComputed, pCalcKind, pDenotation, "", "" } } { }
 
-   size_t             ID() const { return std::get<0>(data); }
-   std::string const& Name() const { return std::get<1>(data); }
-   std::string const& DBName() const { return std::get<2>(data); }
-   std::string const& DataType() const { return std::get<3>(data); }
-   size_t             Len() const { return std::get<4>(data); }
-   size_t             Scale() const { return std::get<5>(data); }
-   bool               NotNull() const { return std::get<6>(data); }
-   bool               Primary() const { return std::get<7>(data); }
-   std::string const& CheckSeq() const { return std::get<8>(data); }
-   std::string const& InitSeq() const { return std::get<9>(data); }
-   std::string const& Computed() const { return std::get<10>(data); }
-   bool               IsComputed() const { return Computed().size() > 0; }
+   size_t              ID() const { return std::get<0>(data); }
+   std::string const&  Name() const { return std::get<1>(data); }
+   std::string const&  DBName() const { return std::get<2>(data); }
+   std::string const&  DataType() const { return std::get<3>(data); }
+   size_t              Len() const { return std::get<4>(data); }
+   size_t              Scale() const { return std::get<5>(data); }
+   bool                NotNull() const { return std::get<6>(data); }
+   bool                Primary() const { return std::get<7>(data); }
+   std::string const&  CheckSeq() const { return std::get<8>(data); }
+   EMyCheckKinds       CheckAtTable() const { return std::get<9>(data); }
+   std::string const&  InitSeq() const { return std::get<10>(data); }
+   std::string const&  Computed() const { return std::get<11>(data); }
+   bool                IsComputed() const { return Computed().size() > 0; }
+   EMyCalculationKinds KindOfCalulate() const { return std::get<12>(data); }
 
-   std::string const& Comment() const { return std::get<11>(data); }
+   std::string const& Denotation() const { return std::get<13>(data); }
+   std::string const& Description() const { return std::get<14>(data); }
+   std::string const& Comment() const { return std::get<15>(data); }
 
    TMyTable const& Table() const { return table;  }
 
    std::string Comment_Attribute() const;
+
+   TMyAttribute& AddDescription(std::string const& pText);
+   TMyAttribute& AddComment(std::string const& pText);
+
+private:
+   std::string& Denotation() { return std::get<13>(data); }
+   std::string& Description() { return std::get<14>(data); }
+   std::string& Comment() { return std::get<15>(data); }
 
 };
 
@@ -211,32 +228,57 @@ public:
 
 using myIndices = std::vector<TMyIndices>;
 
-enum class EMyEntityType : uint32_t { undefined, table, view };
+enum class EMyEntityType : uint32_t { undefined, table, range, relationship, view };
 
 using myStatements = std::vector<std::string>;
 
 
 class TMyNameSpace {
 private:
-   using myData = std::tuple<std::string, std::string, std::string>;
+   using myData = std::tuple<std::string, std::string, std::string, std::string>;
    myData data;
    TMyDictionary const& dictionary;
 public:
    TMyNameSpace() = delete;
    TMyNameSpace(TMyNameSpace const& other) : dictionary(other.dictionary), data(other.data) { }
-   TMyNameSpace(TMyDictionary const& dict, std::string const& pName, std::string const& pDenotation, std::string const& pDescription) :
-        dictionary(dict), data { myData { pName, pDenotation, pDescription } } { }
+   TMyNameSpace(TMyDictionary const& dict, std::string const& pName, std::string const& pDenotation, 
+                std::string const& pDescription = "", std::string const& pComment = "") :
+        dictionary(dict), data { myData { pName, pDenotation, pDescription, pComment } } { }
 
    /** \name Selectors for TMyTable
        \{ */
    std::string const& Name() const { return std::get<0>(data);  }
    std::string const& Denotation() const { return std::get<1>(data); }
    std::string const& Description() const { return std::get<2>(data); }
+   std::string const& Comment() const { return std::get<3>(data); }
    /// \}
 
 };
 
 using myNameSpaces = std::map<std::string, TMyNameSpace>;
+
+class TMyDirectory {
+private:
+   using myData = std::tuple<std::string, std::string, std::string>;
+   myData data;
+   TMyDictionary const& dictionary;
+public:
+   TMyDirectory() = delete;
+   TMyDirectory(TMyDirectory const& other) : dictionary(other.dictionary), data(other.data) { }
+   TMyDirectory(TMyDictionary const& dict, std::string const& pName, std::string const& pDenotation, std::string const& pDescription) :
+      dictionary(dict), data{ myData { pName, pDenotation, pDescription } } { }
+
+   /** \name Selectors for TMyTable
+       \{ */
+   std::string const& Name() const { return std::get<0>(data); }
+   std::string const& Denotation() const { return std::get<1>(data); }
+   std::string const& Description() const { return std::get<2>(data); }
+   /// \}
+
+};
+
+using myDirectories = std::map<std::string, TMyDirectory>;
+
 
 class TMyTable {
 private:
@@ -245,14 +287,15 @@ private:
                              myStatements>;
    myData data;
    TMyDictionary const& dictionary;
-
+ 
    /// internal datatype with all composed tables and necessary informations about this
    using my_part_of_type = std::tuple<TMyTable, std::string, std::string, std::vector<size_t>, std::vector<std::pair<size_t, size_t>>>;
 
 public:
    TMyTable() = delete;
    TMyTable(TMyTable const& other) : dictionary(other.dictionary), data(other.data) { }
-   //TMyTable(TMyTable&& other) noexcept : dictionary(std::move(other.dictionary)), data(std::move(other.data)) { }
+   TMyTable(TMyTable&& other) noexcept : dictionary(other.dictionary), data(other.data) { }
+
 
    TMyTable(TMyDictionary const& dict, std::string const& pName, EMyEntityType pType, std::string const& pSQLName, std::string const& pSchema,
             std::string const& pSourceName, std::string const& pNamespace,     
@@ -260,6 +303,9 @@ public:
       dictionary { dict },
       data { myData { pName, pType, pSQLName, pSchema, pSourceName, pNamespace, pSrcPath, pSQLPath, pDenotation, ""s, ""s,
                      { }, { }, { }, { }, { }, { } } } { }
+
+
+
 
    /** \name Selectors for TMyTable
        \{ */
@@ -321,13 +367,14 @@ public:
    TMyAttribute const& FindAttribute(size_t iID) const;
 
 
-   std::vector<TMyTable> GetParents() const;
-   std::vector<my_part_of_type>  GetPart_ofs() const;
+   std::vector<TMyTable> GetParents(EMyReferenceType ref_type = EMyReferenceType::generalization) const;
+   std::vector<my_part_of_type>  GetPart_ofs(EMyReferenceType ref_type = EMyReferenceType::composition) const;
    std::vector<std::pair<TMyAttribute, TMyDatatype>> GetProcessing_Data() const;
+
 
    TMyTable& AddAttribute(int pID, std::string const& pName, std::string const& pDBName, std::string const& pDataType,
                           size_t pLen, size_t pScale, bool pNotNull, bool pPrimary, std::string const& pCheck,
-                          std::string const& pInit, std::string const& pComputed, std::string const& pComment);
+                          std::string const& pInit, std::string const& pComputed, std::string const& pDenotation);
 
    TMyTable& AddReference(std::string const& pName, EMyReferenceType pRefType, std::string const& pRefTable, 
                           std::string const& pDescription, std::string const& pCardinality, std::optional<size_t> const& pShowAttribute,
@@ -349,7 +396,8 @@ public:
 
    bool CreateDox(std::ostream& os) const;
 
-   myStatements Create_Table_Statements(bool boAll) const;
+   myStatements Create_Table_Statements() const;
+   myStatements Create_View_Statements() const;
    myStatements Create_Alter_Table_Statements() const; 
    myStatements Create_Primary_Key_Statements() const;
    myStatements Create_Foreign_Keys_Statements() const;
@@ -360,7 +408,8 @@ public:
    myStatements Create_PostConditions_Statements() const;
    myStatements Create_Cleaning_Statements() const;
 
-   bool SQL_Create_Table(std::ostream& os, bool boAll) const;
+   bool SQL_Create_Table(std::ostream& os) const;
+   bool SQL_Create_View(std::ostream& os) const;
    bool SQL_Create_Alter_Table(std::ostream& os) const;
    bool SQL_Create_Primary_Key(std::ostream& os) const;
    bool SQL_Create_Foreign_Keys(std::ostream& os) const;
@@ -408,7 +457,9 @@ public:
 
       return result;
       }
-
+   //private:
+      std::set<std::string> GetPrecursors(bool boAll = true) const;
+      std::set<std::string> GetSuccessors(bool boAll = true) const;
 };
 
 using myTables = std::map<std::string, TMyTable>;
@@ -416,27 +467,32 @@ using myTables = std::map<std::string, TMyTable>;
 
 /// \brief class represented the metadata collection
 class TMyDictionary {
-   std::string  strName        = "default"s;   ///< name of the project
-   std::string  strDenotation  = ""s;          ///< denotation / denomination of the Project
-   std::string  strVersion     = "1.0"s;       ///< version id for the project
-   std::string  strDescription = ""s;          ///< description / synopsis for the project
-   std::string  strComment     = ""s;          ///< comments / notes for the project
-   std::string  strAuthor      = ""s;          ///< author 
-   std::string  strCopyright   = ""s;          ///< copyright statement for this project
-   std::string  strLicense     = ""s;          ///< additional statement for the license
+   std::string   strName        = "default"s;   ///< name of the project
+   std::string   strDenotation  = ""s;          ///< denotation / denomination of the Project
+   std::string   strVersion     = "1.0"s;       ///< version id for the project
+   std::string   strDescription = ""s;          ///< description / synopsis for the project
+   std::string   strComment     = ""s;          ///< comments / notes for the project
+   std::string   strAuthor      = ""s;          ///< author 
+   std::string   strCopyright   = ""s;          ///< copyright statement for this project
+   std::string   strLicense     = ""s;          ///< additional statement for the license
 
-   std::string  strReaderClass = "TMyReader"s; ///< class name for the database reader 
-   std::string  strReaderFile  = "MyReader"s;  ///< file name for the database reader class
+   std::string   strReaderClass = "TMyReader"s; ///< class name for the database reader 
+   std::string   strReaderFile  = "MyReader"s;  ///< file name for the database reader class
 
 
-   fs::path     pathSource;                    ///< file path to the location of the source files
-   fs::path     pathSQL;                       ///< file path to the location of the sql scripts
-   fs::path     pathDoc;                       ///< file path to the location of the documentation files
+   fs::path      pathSource;                    ///< file path to the location of the source files
+   fs::path      pathSQL;                       ///< file path to the location of the sql scripts
+   fs::path      pathDoc;                       ///< file path to the location of the documentation files
 
-   myDataTypes  datatypes;                     ///< container with the datatypes for this project
-   myTables     tables;                        ///< container with all tables inside of this project
-   myNameSpaces namespaces;                    ///< container with all defined namespaces of tis project
+   std::string strBaseClass;                    ///< BaseClass for all Classes. BaseClass created and used if set
+   std::string strBaseNamespace;                ///< namespace for the BaseClass 
+   fs::path    pathToBase;                      ///< path with filename to BaseClass, relative to SourcePath !! 
 
+
+   myDataTypes   datatypes;                     ///< container with the datatypes for this project
+   myTables      tables;                        ///< container with all tables inside of this project
+   myNameSpaces  namespaces;                    ///< container with all defined namespaces of this project
+   myDirectories directories;                   ///< container with defined subdirectories of this project
 public:
 
    TMyDictionary() = default;
@@ -465,6 +521,12 @@ public:
 
    myDataTypes const& DataTypes() const { return datatypes; }; 
    myTables const&    Tables() const { return tables; };
+
+   bool               UseBaseClass() const { return strBaseClass.size() > 0; }
+   std::string const& BaseClass() const { return strBaseClass; }
+   std::string const& BaseNamespace() const { return strBaseNamespace; } 
+   fs::path const&    PathToBase() const { return pathToBase; }
+
    /// \}
    
    /** \name manipulators for class TMyDictionary
@@ -486,6 +548,11 @@ public:
    fs::path const& SourcePath(fs::path const& newPath) { return pathSource = newPath; }
    fs::path const& SQLPath(fs::path const& newPath) { return pathSQL = newPath; }
    fs::path const& DocPath(fs::path const& newPath) { return pathDoc = newPath; }
+
+   std::string const& BaseClass(std::string const& newVal) { return strBaseClass = newVal; }
+   std::string const& BaseNamespace(std::string const& newVal) { return strBaseNamespace = newVal; }
+   fs::path const& PathToBase(fs::path const& newVal) { return pathToBase = newVal; }
+
    /// \}
 
    /** \name methods to work with the datatypes
@@ -508,8 +575,14 @@ public:
                       std::string const& pSrcPath, std::string const& pSQLPath, std::string const& pDenotation);
    /// \}
 
-   TMyNameSpace& AddNameSpace(std::string const& pName, std::string const& pDonation, std::string const& pDenotation);
+   TMyNameSpace&       FindNameSpace(std::string const& pName);
+   TMyNameSpace const& FindNameSpace(std::string const& pName) const;
+   TMyDictionary&      AddNameSpace(std::string const& pName, std::string const& pDenotation, 
+                                    std::string const& pDescription = "", std::string const& pComment = "");
 
+   TMyDirectory&       FindDirectory(std::string const& pName);
+   TMyDirectory const& FindDirectory(std::string const& pName) const;
+   TMyDictionary&      AddDirectory(std::string const& pName, std::string const& pDenotation, std::string const& pDescription);
 
    void CreateTable(std::string const& strTable, std::ostream& out) const;
    void CreateClass(std::string const& strTable, std::ostream& out) const;
@@ -520,8 +593,13 @@ public:
    bool Create_SQL_Additionals(std::ostream&) const;
    bool Create_SQL_RangeValues(std::ostream&) const;
 
+   void Create_SQL_Documentation(std::ostream&) const;
+
    bool SQL_Drop_Tables(std::ostream& os) const;
+
+   bool CreateBaseHeader(std::ostream& out = std::cout) const;
    void Create_All(std::ostream& out = std::cout, std::ostream& err = std::cerr) const;
 
+   void Test() const;
 };
 

@@ -38,62 +38,59 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
       };
 
    try {
-      // write the file documentation for the header file of dataclasses
+      // write the documentations header for the file of this dataclass
       // -----------------------------------------------------------------------------------------
-      os << "/** \\file\n"
-         << "  * \\brief definition of dataclass " << ClassName() << " of table \\ref " << Doc_RefName()
-               << " in dictionary \"" << Dictionary().Name() << "\"\n";
-      if (Comment().size() > 0)  os << "  * \\details " << Comment() << '\n';
-
-      os << "  * \\see table \\ref " << Doc_RefName() << '\n';
-      os << "  * \\version " << Dictionary().Version() << '\n'
-         << "  * \\author " << Dictionary().Author() << '\n'
-         << "  * \\date " << CurrentDate() << "  file created with adecc Scholar metadata generator\n";
-
-      if (Dictionary().Copyright().size() > 0) {
-         os << "  * \\copyright " << Dictionary().Copyright() << '\n';
-         if (Dictionary().License().size() > 0) {
-            os << "  * " << Dictionary().License() << '\n';
-            }
-         }
-      os << "\n */\n\n";
-
-      auto parents = GetParents();
-      auto part_of_data = GetPart_ofs();
+      os << "/*\n"
+         << "* Project: " << Dictionary().Denotation() <<  "\n"
+         << "* Definition of the data class " << ClassName() << "\n"
+         << "* Content: " << Denotation() << "\n"
+         << "* Date: " << CurrentTimeStamp() << "  file created with adecc Scholar metadata generator\n";
+         if (Dictionary().Copyright().size() > 0) os << "* copyright © " << Dictionary().Copyright() << '\n';
+         if (Dictionary().License().size() > 0)   os << "* " << Dictionary().License() << '\n';
+      os << "*/\n\n";
+  
+      auto parents = GetParents(EMyReferenceType::generalization);
+      auto part_of_data = GetPart_ofs(EMyReferenceType::composition);
 
       // write header files for base classes
       if (!parents.empty()) {
-         os << "\n// includes for base classes\n";
+         os << "\n// includes for required header files of base classes\n";
          std::ranges::for_each(parents, [&os](auto const& p) { os << std::format("#include {}\n", p.Include()); });
+         }
+      else if(Dictionary().UseBaseClass()) {
+         os << "\n// includes for common  virtual base class\n";
+         os << std::format("#include \"{}\"\n", Dictionary().PathToBase().string());
          }
 
       // write header files for compositions
       if (!part_of_data.empty()) {
-         os << "\n// includes for part of relationships\n";
+         os << "\n// includes for required header files for part of relationships\n";
          std::ranges::for_each(part_of_data, [&os](auto const& p) { os << std::format("#include {}\n", std::get<0>(p).Include()); } ); 
          }
 
-      // find n
+      // find necessary header files for used datatypes
       auto types = Attributes() | std::views::transform([this](auto const& s) {
                                    auto const& dt = Dictionary().FindDataType(s.DataType());
                                    return dt.Headerfile(); })
                                 | std::ranges::to<std::set<std::string>>();
 
       if (!types.empty()) {
-         os << "\n// additional headers for used datatypes\n";
+         os << "\n// necessary additional headers for used datatypes\n";
          std::ranges::for_each(types | std::views::filter([](const std::string& line) { return !line.empty(); }),
                         [&os](const std::string& line) { os << "#include " << line << '\n'; });
          }
 
       os << "\n"
          << "#include <optional>\n"
+         << "#include <stdexcept>\n"
          << "#include <map>\n"
          << "#include <tuple>\n"  // possible to avoid this (count of primary keys && count of composed keys < 2
+         << "#include <memory>\n" // possible to avoid this when gerneral used std::tuple  !!!
          << "\n";
 
       auto processing_data = GetProcessing_Data();
 
-      // bestimme die maximale Breite für die Attribute
+      // ---------- determine the maximal width for attributes ---------------------------------
       auto maxElement = std::ranges::max_element(processing_data, [](auto const& a, auto const& b) {
          return a.second.SourceType().size() < b.second.SourceType().size(); });
 
@@ -131,10 +128,11 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
 
       // open the namespace when needed
       bool boHasNamespace = Namespace().size() > 0;
-      if (boHasNamespace) os << "namespace " << Namespace() << " {\n\n";
+      if (boHasNamespace) os //<< Dictionary().FindNameSpace(Namespace()) // possiple exception, don't use this
+                             << "namespace " << Namespace() << " {\n\n";
 
       // write comment to open class
-      os << "/// \\brief " << Denotation() << "\n";
+      os << "// " << Denotation() << "\n";
       os << "class " << ClassName();
       
       // write base classes from references
@@ -145,12 +143,38 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
                                           << (Namespace() != p.Namespace() ? p.FullClassName() : p.ClassName()); 
                                        });
          }
+      else if (Dictionary().UseBaseClass()) {
+         os << std::format(" : virtual public {}", (Namespace() != Dictionary().BaseNamespace() ? 
+                                                      Dictionary().BaseNamespace() + "::" + Dictionary().BaseClass() : 
+                                                      Dictionary().BaseClass()));
+         }
       os << " {\n";
 
-       // ---------------- generate datatypes for composed tables ---------------------------------------
+      // -------------- generate common datatypes for this table ---------------------------------------
+      os << "   public:\n"
+         << strTab << "// public datatypes for this table\n";
+
+      auto prim_attr = processing_data | std::views::filter([](auto const& a) { return std::get<0>(a).Primary(); }) | std::ranges::to<std::vector>();
+      switch(prim_attr.size()) {
+         case 0: throw std::runtime_error("critical error: missing primary key for table.");
+         case 1: 
+            os << strTab << "using primary_key = " << std::get<1>(prim_attr[0]).SourceType() << ";\n"; 
+            break;
+         case 2: 
+            os << strTab << "using primary_key = std::pair<" << std::get<1>(prim_attr[0]).SourceType()
+               << ", " << std::get<1>(prim_attr[1]).SourceType() << ">;\n"; 
+            break;
+         default:
+            os << strTab << "using primary_key = std::tuple<" << std::get<1>(prim_attr[0]).SourceType();
+            for (auto const& [_, dt] : prim_attr | std::views::drop(1)) { os << ", " << dt.SourceType(); }
+            os << ">;\n";
+         }
+
+      os << strTab << "using container_ty = std::map<primary_key, " << ClassName() << ">;\n\n";
+
+      // ---------------- generate datatypes for composed tables ---------------------------------------
       if (!part_of_data.empty()) {
-         os << "   // public datatypes for composed tables\n"
-            << "   public:\n";
+         os << strTab << "// public datatypes for composed tables\n";
          for (auto const& [table, strType, strVar, vecKeys, vecParams] : part_of_data) {
             os << "\n" << strTab << "/// datatype for composed table \\ref " << table.Doc_RefName() << '\n';
             os << strTab << "using " << strType << " = ";
@@ -183,76 +207,102 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
          std::string strType = "std::optional<"s + dtype.SourceType() + ">"s;
          std::string strAttribute = dtype.Prefix() + attr.Name() + ";"s;
          std::string strComment = attr.Comment_Attribute();
-         os << std::format("{0}/// {5}\n{0}{1:<{2}}{3:<{4}}\n", strTab, strType, maxLengthType + 15, strAttribute, maxLengthAttr, strComment);
+         os << std::format("{0}// {5}\n{0}{1:<{2}}{3:<{4}}\n", strTab, strType, maxLengthType + 15, strAttribute, maxLengthAttr, strComment);
          }
 
+      // --------------- generate data elements for the table which are part of related --------------
       if (!part_of_data.empty()) {
          //os << "\n   private:\n";
          os << "\n" << strTab << "// data elements for composed tables\n";
          for(auto const& [table, strType, strVar, vecKeys, vecParams] : part_of_data) {
-            /*
-            os << strTab << "// key types are:";
-            std::ranges::for_each(vecKeys, [&os](auto const& val) { os << " " << val; });
-            os << '\n' << strTab << "// param types are:";
-            std::ranges::for_each(vecParams, [&os](auto const& val) { os << " {" << val.first << ", " << val.second << "}"; });
-            os << '\n';
-            */
             os << std::format("{0}/// composed data element for the table \\ref {1}\n{0}{2} {3};", strTab, table.Doc_RefName(), strType, strVar);
-            //if(vecKeys.size() > 0) {
-            //   os
-            //   }
-
             }
-         //std::ranges::for_each(part_of_data, [&os, &strTab](auto const& p) { os << std::format("{}{} {}\n", strTab, std::get<1>(p), std::get<2>(p)); });
-         //for (auto const& [tab, ref] : part_of_data) { os << std::format("{0}///{}\n{0}my{} "       os << "// my" << tab.Name() << " m" << tab.Name() << ";\n"; }
          }
 
-            os << "\n   public:\n" << StartNameDoc(6, "constructors and destructor", ClassName());
-            os << std::format("{0}{1:}();\n", strTab, ClassName())
-               << std::format("{0}{1:}({1:} const&);\n", strTab, ClassName())
-               << std::format("{0}{1:}({1:} &&);\n\n", strTab, ClassName())
-               << std::format("{0}virtual ~{1:}();\n\n", strTab, ClassName());
-            os << EndNameDoc(6);
+      os << "\n   public:\n"
+         << strTab << "// constructors and destructor\n";
+      os << std::format("{0}{1:}();\n", strTab, ClassName())
+         << std::format("{0}{1:}({1:} const&);\n", strTab, ClassName())
+         << std::format("{0}{1:}({1:} &&);\n", strTab, ClassName())
+         << std::format("{0}virtual ~{1:}();\n", strTab, ClassName());
+      os << "\n"; 
 
-            os << StartNameDoc(6, "virtual functions", ClassName());
-            os << std::format("{0}virtual void init();\n", strTab)
-               << std::format("{0}virtual void copy({1} const& other);\n\n", strTab, ClassName());
-            os << EndNameDoc(6);
+      os << strTab << "// public functions for this class (following the framework for this project)\n";
+      os << std::format("{}void swap({}& rhs) noexcept;\n", strTab, ClassName());
+      if (Dictionary().UseBaseClass()) {
+         auto param_ty = Dictionary().BaseNamespace() != Namespace() ? Dictionary().BaseNamespace() + "::"s + Dictionary().BaseClass() : Dictionary().BaseClass();
+         os << std::format("{0}virtual void init();\n", strTab)
+            << std::format("{0}virtual void copy({1} const& other);\n", strTab, param_ty)
+            << "\n";
+         }
+      else {
+         os << std::format("{0}void init();\n", strTab)
+            << std::format("{0}void copy({1} const& other);\n", strTab, ClassName())
+            << "\n";
+         }
 
             // ------------------ generate the selectors direct data elements for the table  -----------------------------------
-            os << StartNameDoc(6, "selectors", ClassName());
+            os << strTab << "// selectors for the data access to the direct data elements with std::optional retval\n";
             for (auto const& [attr, dtype] : processing_data) {
                std::string strRetType = "std::optional<"s + dtype.SourceType() + "> const&"s;
                std::string strSelector = attr.Name();
-               std::string strAttribute = dtype.Prefix() + attr.Name() + ">";
+               std::string strAttribute = dtype.Prefix() + attr.Name();
                std::string strComment = attr.Comment_Attribute();
-               os << std::format("{0}/// selector with std::optional as retval for {5}\n{0}{1:<{2}}{3}() const {{ return {4}; }}\n", strTab, strRetType, maxLengthType + 22, strSelector, strAttribute, strComment);
+               os << std::format("{0}// selector for {5}\n{0}{1:<{2}}{3}() const {{ return {4}; }}\n", strTab, strRetType, maxLengthType + 22, strSelector, strAttribute, strComment);
                }
             os << "\n";
+
             for (auto const& [attr, dtype] : processing_data) {
                std::string strRetType = dtype.SourceType() + (dtype.UseReference() ? " const&"s : ""s);
                std::string strSelector = attr.Name();
                std::string strComment = attr.Comment_Attribute();
-               os << std::format("{0}///< selector with value for {4}\n{0}{1:<{2}}_{3}() const;\n", strTab, strRetType, maxLengthRet, strSelector, strComment);
+               os << std::format("{0}//< special selector with value for {4}\n{0}{1:<{2}}_{3}() const;\n", strTab, strRetType, maxLengthRet, strSelector, strComment);
                }
-            os << EndNameDoc(6);
+            os << "\n";
 
-
-
-            // ------------------ generate the manipulators for the table  -----------------------------------
-            os << StartNameDoc(6, "manipulators", ClassName());
-            for (auto const& [attr, dtype] : processing_data | std::views::filter([](auto const& val) { return !val.first.IsComputed(); })) {
-               std::string strRetType = "std::optional<"s + dtype.SourceType() + "> const&"s;
-               std::string strManipulator = attr.Name();
-               std::string strAttribute = dtype.Prefix() + attr.Name();
-               std::string strComment = attr.Comment_Attribute();
-               //os << std::format("{0}{1:<{2}}{3}({1} newVal); ///< manipulator for {4}\n", strTab, strRetType, maxLengthType + 22, strManipulator, strComment);
-               os << std::format("{0}/// manipulator for {4}\n{0}{1:<{2}}{3}({1} newVal);\n", strTab, strRetType, maxLengthType + 22, strManipulator, strComment);
+            /*
+            // --------------- generate data elements for the table which are part of related --------------
+            if (!part_of_data.empty()) {
+               //os << "\n   private:\n";
+               os << "\n" << strTab << "// data elements for composed tables\n";
+               for (auto const& [table, strType, strVar, vecKeys, vecParams] : part_of_data) {
+                  os << std::format("{0}/// composed data element for the table \\ref {1}\n{0}{2} {3};", strTab, table.Doc_RefName(), strType, strVar);
                }
-            os << EndNameDoc(6);
+            }
+            */
 
-            os << "   private:\n"
-               << StartNameDoc(6, "internal functions", ClassName())
+            // ------------------ generate the public manipulators for the table  -----------------------------------
+            // Attention, views haven't manipulator for data elements, calculated fields don't have a manipulator
+            if (EntityType() != EMyEntityType::view && std::ranges::any_of(processing_data, [](auto const& p) { return !std::get<0>(p).IsComputed(); })) {
+               os << strTab << "// public manipulators for the class\n";
+               for (auto const& [attr, dtype] : processing_data | std::views::filter([](auto const& val) { return !val.first.IsComputed(); })) {
+                  std::string strRetType = "std::optional<"s + dtype.SourceType() + "> const&"s;
+                  std::string strManipulator = attr.Name();
+                  std::string strAttribute = dtype.Prefix() + attr.Name();
+                  std::string strComment = attr.Comment_Attribute();
+                  os << std::format("{0}// manipulator for {4}\n{0}{1:<{2}}{3}({1} newVal);\n", strTab, strRetType, maxLengthType + 22, strManipulator, strComment);
+                  }
+               os << "\n";
+               }
+
+            os << "   private:\n";
+
+            // ---------------- generate the private manipulators for the table / views --------------------------------
+            auto comp_attr = processing_data | std::views::filter([this](auto const& val) { return EntityType() == EMyEntityType::view || val.first.IsComputed(); });
+            if(!comp_attr.empty()) {
+               os << strTab << "// private  manipulators for the class\n";
+               for (auto const& [attr, dtype] : comp_attr) {
+                  std::string strRetType = "std::optional<"s + dtype.SourceType() + "> const&"s;
+                  std::string strManipulator = attr.Name();
+                  std::string strAttribute = dtype.Prefix() + attr.Name();
+                  std::string strComment = attr.Comment_Attribute();
+                  os << std::format("{0}// manipulator for {4}\n{0}{1:<{2}}{3}({1} newVal);\n", strTab, strRetType, maxLengthType + 22, strManipulator, strComment);
+                  }
+               os << "\n";
+               }
+              
+
+            os << StartNameDoc(6, "internal functions", ClassName())
                << "      void _init();\n"
                << "      void _copy(" << ClassName() << " const& other);\n";
             os << EndNameDoc(6);
@@ -276,14 +326,15 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
 
 
             os << '\n';
-            os << "// Implementations of the manipulators\n";
-            for (auto const& [attr, dtype] : processing_data | std::views::filter([](auto const& val) { return !val.first.IsComputed(); })) {
-               std::string strRetType = "std::optional<"s + dtype.SourceType() + "> const&"s;
-               std::string strManipulator = ClassName() + "::"s + attr.Name();
-               std::string strAttribute = dtype.Prefix() + attr.Name();
-               os << std::format("inline {0} {1}({0} newVal) {{\n   return {2} = newVal;\n   }}\n\n", strRetType, strManipulator, strAttribute);
+            if (EntityType() != EMyEntityType::view) {
+               os << "// Implementations of the manipulators\n";
+               for (auto const& [attr, dtype] : processing_data | std::views::filter([](auto const& val) { return !val.first.IsComputed(); })) {
+                  std::string strRetType = "std::optional<"s + dtype.SourceType() + "> const&"s;
+                  std::string strManipulator = ClassName() + "::"s + attr.Name();
+                  std::string strAttribute = dtype.Prefix() + attr.Name();
+                  os << std::format("inline {0} {1}({0} newVal) {{\n   return {2} = newVal;\n   }}\n\n", strRetType, strManipulator, strAttribute);
+                  }
                }
-
 
             if (boHasNamespace) os << "} // end of namespace " << Namespace() << "\n";
       }
@@ -314,24 +365,14 @@ bool TMyTable::CreateSource(std::ostream& os, bool boInline) const {
             maxLengthAttr = maxElement->second.Prefix().size() + maxElement->first.Name().size() + 1;
             }
 
-
-         os << "/** \\file\n"   
-            << "  * \\brief implementation file of dataclass " << ClassName() << " of table \\ref " << Doc_RefName() << " in dictionary \"" << Dictionary().Name() << "\"\n";
-         if (Comment().size() > 0)
-            os << "  * \\details " << Comment() << '\n';
-         os << "  * \\see table \\ref " << Doc_RefName() << '\n';
-
-         os << "  * \\version " << Dictionary().Version() << '\n'
-            << "  * \\author " << Dictionary().Author() << '\n'
-            << "  * \\date " << CurrentDate() << "  file created with adecc Scholar metadata generator\n";
-
-         if (Dictionary().Copyright().size() > 0) {
-            os << "  * \\copyright " << Dictionary().Copyright() << '\n';
-            if (Dictionary().License().size() > 0) {
-               os << "  * " << Dictionary().License() << '\n';
-               }
-            }
-         os << " */\n\n";
+         os << "/*\n"
+            << "* Project: " << Dictionary().Denotation() << "\n"
+            << "* Implementation of the data class " << ClassName() << "\n"
+            << "* Content: " << Denotation() << "\n"
+            << "* Date: " << CurrentTimeStamp() << "  file created with adecc Scholar metadata generator\n";
+         if (Dictionary().Copyright().size() > 0) os << "* copyright " << Dictionary().Copyright() << '\n';
+         if (Dictionary().License().size() > 0)   os << "* " << Dictionary().License() << '\n';
+         os << "*/\n\n";
 
          os << std::format("#include {}\n\n", Include());
 
@@ -355,7 +396,6 @@ bool TMyTable::CreateSource(std::ostream& os, bool boInline) const {
             << strTab << "}\n\n";
 
          // create the copy constructor for the class
-
          os << ClassName() << "::" << ClassName() << "(" << ClassName() << " const& other)";
          if (!parents.empty()) {
             size_t i = 0;
@@ -369,6 +409,11 @@ bool TMyTable::CreateSource(std::ostream& os, bool boInline) const {
             << strTab << "_copy(other);\n"
             << strTab << "}\n\n";
 
+         // create the destructor
+         os << ClassName() << "::" << "~" << ClassName() << "() {"
+            << strTab << "}\n\n";
+
+
          // _init: internal initialization method for the class
 
          os << "void " << ClassName() << "::_init() {\n";
@@ -377,14 +422,14 @@ bool TMyTable::CreateSource(std::ostream& os, bool boInline) const {
             os << std::format("   {0:<{1}} = {{ }};\n", strAttribute, maxLengthAttr);
             }
          os << "   return;\n"
-            << "   };\n\n";
+            << "   }\n\n";
 
          os << "void " << ClassName() << "::_copy(" << ClassName() << " const& other) {\n";
          for (auto const& [attr, dtype] : processing_data) {
             os << std::format("   {0}(other.{0}());\n", attr.Name());
             }
          os << "   return;\n"
-            << "   };\n\n";
+            << "   }\n\n";
 
          if (boHasNamespace) os << "} // end of namespace " << Namespace() << "\n";
 
@@ -403,4 +448,35 @@ bool TMyTable::CreateReadData(std::ostream& os, std::string const& data) {
 
 bool TMyTable::CreateWriteData(std::ostream& os, std::string const& data) {
    return true;
+   }
+
+bool TMyDictionary::CreateBaseHeader(std::ostream& os) const {
+   if (UseBaseClass()) [[likely]] {
+      // write the comment for the base class when used
+      // -----------------------------------------------------------------------------------------
+      os << "/*\n"
+         << "* Project: " << Denotation() << "\n"
+         << "* Definition of the base class " << BaseClass() << "\n"
+         << "* Date: " << CurrentTimeStamp() << "  file created with adecc Scholar metadata generator\n";
+      if (Copyright().size() > 0) os << "* copyright © " << Copyright() << '\n';
+      if (License().size() > 0)   os << "* " << License() << '\n';
+      os << "*/\n\n";
+
+      if(BaseNamespace().size() > 0) os << "namespace " << BaseNamespace() << " {\n\n";
+ 
+      os << "class " << BaseClass() << " {\n"
+         << "   public:\n"
+         << "      " << BaseClass() << "() = default;\n"
+         << "      " << BaseClass() << "(" << BaseClass() << " const&) = default;\n"
+         << "      " << BaseClass() << "(" << BaseClass() << "&&) noexcept = default;\n"
+         << "      virtual ~" << BaseClass() << "() = default;\n"
+         << "\n"
+         << "      virtual init() = 0;\n"
+         << "      virtual copy(" << BaseClass() << " const&) = 0;\n"
+         << "   };\n";
+
+      if (BaseNamespace().size() > 0) os << "\n} // end of namespace " << BaseNamespace() << "\n";
+      return true;
+      }
+   else return false;
    }
