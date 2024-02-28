@@ -518,7 +518,6 @@ void  TMyDictionary::Create_All(std::ostream& out, std::ostream& err) const {
          auto srcPath = SourcePath() / PathToBase();
          fs::create_directories(srcPath.parent_path());
          std::ofstream of_base(srcPath);
-         of_base << "\\test\n";
          if(of_base) CreateBaseHeader(of_base);
          }
 

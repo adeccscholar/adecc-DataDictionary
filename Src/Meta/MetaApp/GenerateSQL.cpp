@@ -318,9 +318,7 @@ void TMyDictionary::Create_SQL_Documentation(std::ostream& os) const {
        os << "\n";
 
        for(auto const& attr : table.Attributes()) {
-          auto const& schema_name = table.SQLSchema();
-          auto const& table_name  = table.SQLName();
-          auto const& column_name = attr.DBName();
+           auto const& column_name = attr.DBName();
 
           os << "IF EXISTS(SELECT 1 FROM fn_listextendedproperty(N'MS_Description', N'schema', '" << schema_name << "',\n"
              << "                                                N'table', '" << table_name << "',\n"

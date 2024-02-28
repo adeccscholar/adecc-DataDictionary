@@ -47,7 +47,9 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
          << "* Date: " << CurrentTimeStamp() << "  file created with adecc Scholar metadata generator\n";
          if (Dictionary().Copyright().size() > 0) os << "* copyright © " << Dictionary().Copyright() << '\n';
          if (Dictionary().License().size() > 0)   os << "* " << Dictionary().License() << '\n';
-      os << "*/\n\n";
+      os << "*/\n"
+         << "\n"
+         << "#pragma once\n\n";
   
       auto parents = GetParents(EMyReferenceType::generalization);
       auto part_of_data = GetPart_ofs(EMyReferenceType::composition);
@@ -63,6 +65,7 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
          }
 
       // write header files for compositions
+      // Attention: Part of Relationships to a relationship table need a second step, and are difficult to handle
       if (!part_of_data.empty()) {
          os << "\n// includes for required header files for part of relationships\n";
          std::ranges::for_each(part_of_data, [&os](auto const& p) { os << std::format("#include {}\n", std::get<0>(p).Include()); } ); 
@@ -84,6 +87,7 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
          << "#include <optional>\n"
          << "#include <stdexcept>\n"
          << "#include <map>\n"
+         << "#include <vector>\n"
          << "#include <tuple>\n"  // possible to avoid this (count of primary keys && count of composed keys < 2
          << "#include <memory>\n" // possible to avoid this when gerneral used std::tuple  !!!
          << "\n";
@@ -151,9 +155,11 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
       os << " {\n";
 
       // -------------- generate common datatypes for this table ---------------------------------------
+      // -----------------------------------------------------------------------------------------------
       os << "   public:\n"
          << strTab << "// public datatypes for this table\n";
 
+      // ------------------ generate the type for the primary key -------------------------------------- 
       auto prim_attr = processing_data | std::views::filter([](auto const& a) { return std::get<0>(a).Primary(); }) | std::ranges::to<std::vector>();
       switch(prim_attr.size()) {
          case 0: throw std::runtime_error("critical error: missing primary key for table.");
@@ -170,9 +176,12 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
             os << ">;\n";
          }
 
-      os << strTab << "using container_ty = std::map<primary_key, " << ClassName() << ">;\n\n";
+      // ------------------ create map and vector types for this class ---------------------------------
+      os << strTab << "using container_ty = std::map<primary_key, " << ClassName() << ">;\n";
+      os << strTab << "using vector_ty    = std::vector<" << ClassName() << ">;\n\n";
 
       // ---------------- generate datatypes for composed tables ---------------------------------------
+      // Attention: Part of relationships to relations are difficult and should treat other
       if (!part_of_data.empty()) {
          os << strTab << "// public datatypes for composed tables\n";
          for (auto const& [table, strType, strVar, vecKeys, vecParams] : part_of_data) {
@@ -199,6 +208,7 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
          }
 
 
+      // ---------------------------------------------------------------------------------------------
       // ------------------ generate the attributes for the table  -----------------------------------
       os << "   // private data elements, attributes from table \\ref " << Doc_RefName() << "\n"
          << "   private:\n";
@@ -231,8 +241,8 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
       os << std::format("{}void swap({}& rhs) noexcept;\n", strTab, ClassName());
       if (Dictionary().UseBaseClass()) {
          auto param_ty = Dictionary().BaseNamespace() != Namespace() ? Dictionary().BaseNamespace() + "::"s + Dictionary().BaseClass() : Dictionary().BaseClass();
-         os << std::format("{0}virtual void init();\n", strTab)
-            << std::format("{0}virtual void copy({1} const& other);\n", strTab, param_ty)
+         os << std::format("{0}virtual void init() override;\n", strTab)
+            << std::format("{0}virtual void copy({1} const& other) override;\n", strTab, param_ty)
             << "\n";
          }
       else {
@@ -302,10 +312,10 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
                }
               
 
-            os << StartNameDoc(6, "internal functions", ClassName())
+            os << strTab << "// internal functions for this class\n"
                << "      void _init();\n"
-               << "      void _copy(" << ClassName() << " const& other);\n";
-            os << EndNameDoc(6);
+               << "      void _copy(" << ClassName() << " const& other);\n"
+               << "\n";
 
             os << "   };\n\n";
 
@@ -374,7 +384,10 @@ bool TMyTable::CreateSource(std::ostream& os, bool boInline) const {
          if (Dictionary().License().size() > 0)   os << "* " << Dictionary().License() << '\n';
          os << "*/\n\n";
 
-         os << std::format("#include {}\n\n", Include());
+         os << std::format("#include {}\n\n", Include())
+            << "#include <typeinfo>\n\n";
+
+
 
          bool boHasNamespace = Namespace().size() > 0;
 
@@ -412,6 +425,46 @@ bool TMyTable::CreateSource(std::ostream& os, bool boInline) const {
          // create the destructor
          os << ClassName() << "::" << "~" << ClassName() << "() {"
             << strTab << "}\n\n";
+
+         // init
+
+         /*
+               if (Dictionary().UseBaseClass()) {
+         auto param_ty = Dictionary().BaseNamespace() != Namespace() ? Dictionary().BaseNamespace() + "::"s + Dictionary().BaseClass() : Dictionary().BaseClass();
+         os << std::format("{0}virtual void init() override;\n", strTab)
+            << std::format("{0}virtual void copy({1} const& other) override;\n", strTab, param_ty)
+            << "\n";
+         }
+      else {
+         os << std::format("{0}void init();\n", strTab)
+            << std::format("{0}void copy({1} const& other);\n", strTab, ClassName())
+            << "\n";
+         }
+
+         */
+
+         if (Dictionary().UseBaseClass()) {
+            auto param_ty = Dictionary().BaseNamespace() != Namespace() ? Dictionary().BaseNamespace() + "::"s + Dictionary().BaseClass() : Dictionary().BaseClass();
+            os << "void " << ClassName() << "::init() {\n"
+               << "   _init();"
+               << "   }\n\n";
+            os << "void " << ClassName() << "::copy(" << param_ty << " const& other) {\n"
+               << "   try {\n"
+               << "      " << ClassName() << " const& ref = dynamic_cast<" << ClassName() << " const&>(other);\n"
+               << "      _copy(ref);\n"
+               << "      }\n"
+               << "   catch(std::bad_cast const&) { }\n"
+               << "   }\n\n";
+            }
+         else {
+            os << "void " << ClassName() << "::init() {\n"
+               << "   _init();"
+               << "   }\n\n";
+            os << "void " << ClassName() << "::copy(" << ClassName() << " const& other) {\n"
+               << "   _copy(other);\n"
+               << "   }\n\n";
+         }
+
 
 
          // _init: internal initialization method for the class
@@ -460,7 +513,8 @@ bool TMyDictionary::CreateBaseHeader(std::ostream& os) const {
          << "* Date: " << CurrentTimeStamp() << "  file created with adecc Scholar metadata generator\n";
       if (Copyright().size() > 0) os << "* copyright © " << Copyright() << '\n';
       if (License().size() > 0)   os << "* " << License() << '\n';
-      os << "*/\n\n";
+      os << "*/\n\n"
+         << "#pragma once\n\n";
 
       if(BaseNamespace().size() > 0) os << "namespace " << BaseNamespace() << " {\n\n";
  
@@ -471,8 +525,8 @@ bool TMyDictionary::CreateBaseHeader(std::ostream& os) const {
          << "      " << BaseClass() << "(" << BaseClass() << "&&) noexcept = default;\n"
          << "      virtual ~" << BaseClass() << "() = default;\n"
          << "\n"
-         << "      virtual init() = 0;\n"
-         << "      virtual copy(" << BaseClass() << " const&) = 0;\n"
+         << "      virtual void init() = 0;\n"
+         << "      virtual void copy(" << BaseClass() << " const&) = 0;\n"
          << "   };\n";
 
       if (BaseNamespace().size() > 0) os << "\n} // end of namespace " << BaseNamespace() << "\n";

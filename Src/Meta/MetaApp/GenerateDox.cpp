@@ -174,36 +174,73 @@ void TMyDictionary::Create_Doxygen(std::ostream& os) const {
    os << "</table>\n\n"
       << "<hr><a href = \"top_of_mainpage\">top of the page</a>\n";
 
+   // ----------------- create the entity relationship model for all tables ------------------------
+   static constexpr auto processString = [](std::string const& input) {
+         if (input.size() == 0) return std::make_pair(""s, ""s);
+         else {
+            auto pos = input.find(':');
+            std::string val1 = input.substr(0, pos);
+            std::string val2 = input.substr(pos + 1);
+            val1.erase(0, val1.find_first_not_of(' ')); 
+            val1.erase(val1.find_last_not_of(' ') + 1); 
+            val2.erase(0, val2.find_first_not_of(' ')); 
+            val2.erase(val2.find_last_not_of(' ') + 1); 
+            return std::make_pair(val1, val2);
+            }
+         };
+
+   std::string strEntityFmt = "shape=box, fontname=\"Helvetica\", fontsize=8, fillcolor = \"white\", style = \"filled\"";
+   std::string strRelationshipFmt = "shape=diamond,fontname=\"Helvetica\", fontsize=8, fillcolor = \"white\", style = \"filled\"";
+   std::string strGraphFmt = "color=\"darkorchid3\", style=\"solid\"";
+   std::string strGraphLabelFmt = "fontname=\"Helvetica\", fontsize=8, fontcolor=\"grey\""; // labelfloat=true, 
+   /*dir=\"back\",color="darkorchid3",style="solid"  / dashed  label=" boWorkday",fontcolor="grey"  */
 
    os << "\\section datamodel_er_diagram database diagram\n"
       << "\\details \\dot\n"
       << "graph ER {\n"
+      << "   bgcolor=\"transparent\";\n"
       << "   graph [fontname=\"Helvetica\", fontsize=8];\n";
    // create nodes with tables
-   std::ranges::for_each(Tables(), [&os](auto const& val) {
+   std::ranges::for_each(Tables(), [&os, &strEntityFmt](auto const& val) {
             os << "   " << std::get<1>(val).Name() << " [label=\"" << std::get<1>(val).SQLName() 
-               << "\", shape=box,fontname=\"Helvetica\", fontsize=8, URL=\"\\ref " << std::get<1>(val).Doc_RefName() << "\"];\n";
+               << "\", " << strEntityFmt << ", URL=\"\\ref " << std::get<1>(val).Doc_RefName() << "\"];\n";
             });
 
-   // create nodes with the relationships
-   std::ranges::for_each(Tables(), [&os](auto const& table) {
-      std::ranges::for_each(std::get<1>(table).References(), [&os](auto const& ref) {
+   if(false) {
+      // create nodes with the relationships
+      std::ranges::for_each(Tables(), [&os, &strRelationshipFmt](auto const& table) {
+         std::ranges::for_each(std::get<1>(table).References(), [&os, &strRelationshipFmt](auto const& ref) {
               os << "   " << ref.Name() << " [label=\"" << ref.Description();
               if (ref.Cardinality().size() > 0) os << "\n(" << ref.Cardinality() << ")";
-              os << "\", shape=diamond,fontname=\"Helvetica\", fontsize=8];\n";
+              os << "\", " << strRelationshipFmt << "];\n";
               });
-      });
-
-   // create connections between nodes
-   std::ranges::for_each(Tables(), [&os](auto const& pair) {
-      TMyTable const& table = std::get<1>(pair);
-      std::ranges::for_each(table.References(), [&os, &table](auto const& ref) {
-         TMyTable const& refTable = table.Dictionary().FindTable(ref.RefTable());
-         os << "   " << table.Name() << " -- " << ref.Name() << ";\n"
-            << "   " << ref.Name() << " -- " << refTable.Name() << ";\n";
          });
-      });
 
+      // create connections between nodes
+      std::ranges::for_each(Tables(), [&os, &strGraphFmt](auto const& pair) {
+           TMyTable const& table = std::get<1>(pair);
+           std::ranges::for_each(table.References(), [&os, &table, &strGraphFmt](auto const& ref) {
+                 TMyTable const& refTable = table.Dictionary().FindTable(ref.RefTable());
+                 os << "   " << table.Name() << " -- " << ref.Name() << " [" << strGraphFmt << "];\n";
+                 os << "   " << ref.Name() << " -- " << refTable.Name() << " [" << strGraphFmt << "];\n";
+                 });
+           });
+      }
+   else {
+      // create connections between nodes
+      std::ranges::for_each(Tables(), [&os, &strGraphFmt, &strGraphLabelFmt](auto const& pair) {
+         TMyTable const& table = std::get<1>(pair);
+         std::ranges::for_each(table.References(), [&os, &table, &strGraphFmt, &strGraphLabelFmt](auto const& ref) {
+            TMyTable const& refTable = table.Dictionary().FindTable(ref.RefTable());
+            auto cardinality = processString(ref.Cardinality());
+            os << "   " << table.Name() << " -- " << refTable.Name()    // 
+               << " [label=\"" << ref.Description() << "\", " 
+               << " headlabel = \"" << cardinality.first << "\", "
+               << " taillabel = \"" << cardinality.second << "\", "
+               << strGraphFmt << ", " << strGraphLabelFmt << "];\n";
+            });
+         });
+      }
 
    //os << '\n';
    os << "   label = \"\\n\\nEntity Relation Diagram\\n" << Denotation() << "\"\n"
@@ -449,7 +486,7 @@ bool TMyTable::CreateDox(std::ostream& os) const {
       std::ranges::for_each(parents, [this, &os](auto const& p) {
          os << "<tr><td>" << p.FullClassName() << "</td>"
             << "    <td>\\ref " << p.Doc_RefName() << "</td>"
-            << "    <td>" << p.Include() << "</td></tr>";
+            << "    <td>" << (p.SrcPath().size() > 0 ? p.SrcPath() + "/"s : ""s) + p.SourceName() + ".h</td></tr>";
          });
       os << "</table>\n\n";
       }
@@ -507,7 +544,9 @@ bool TMyTable::CreateDox(std::ostream& os) const {
    os << "\\typedef " << FullyQualifiedSourceName() <<"::primary_key\n"
       << "\\brief primary key for elements of this class in a container\n\n"
       << "\\typedef " << FullyQualifiedSourceName()<< "::container_ty\n"
-      << "\\brief container type for elements of this class\n\n";
+      << "\\brief container type as map with primary_key for elements of this class\n\n"
+      << "\\typedef " << FullyQualifiedSourceName() << "::vector_ty\n"
+      << "\\brief container type as vector for elements of this class\n\n";
 
    os << "\\name constructors and destructor for this class\n"
       << "\\{\n"
