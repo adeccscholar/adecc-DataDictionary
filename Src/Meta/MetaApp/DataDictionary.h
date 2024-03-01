@@ -389,13 +389,18 @@ public:
    TMyTable& AddDescription(std::string const& pDescription);
    TMyTable& AddComment(std::string const& pComment);
 
+   /// \name create source for table
+   /// {
    bool CreateHeader(std::ostream& os) const;
    bool CreateSource(std::ostream& os, bool boInline = false) const;
-   bool CreateReadData(std::ostream& os, std::string const& data = "data");
-   bool CreateWriteData(std::ostream& os, std::string const& data = "data");
+   bool CreateReadData(std::ostream& os);
+   bool CreateWriteData(std::ostream& os);
+   /// }
 
    bool CreateDox(std::ostream& os) const;
 
+   /// \name functions to generate sql statements for this table
+   /// {
    myStatements Create_Table_Statements() const;
    myStatements Create_View_Statements() const;
    myStatements Create_Alter_Table_Statements() const; 
@@ -407,6 +412,7 @@ public:
    myStatements Create_RangeValues_Statements() const;
    myStatements Create_PostConditions_Statements() const;
    myStatements Create_Cleaning_Statements() const;
+   /// }
 
    bool SQL_Create_Table(std::ostream& os) const;
    bool SQL_Create_View(std::ostream& os) const;
@@ -464,8 +470,9 @@ public:
 
 using myTables = std::map<std::string, TMyTable>;
 
+// ------------------------------------------------------------------------------------------------
+/// \brief class represented the metadata collection and hold all data
 
-/// \brief class represented the metadata collection
 class TMyDictionary {
    std::string   strName        = "default"s;   ///< name of the project
    std::string   strDenotation  = ""s;          ///< denotation / denomination of the Project
@@ -543,15 +550,13 @@ public:
    std::string const& ReaderClass(std::string const& newVal) { return strReaderClass = newVal; }
    std::string const& ReaderFile(std::string const& newVal) { return strReaderFile = newVal; }
 
- 
-
    fs::path const& SourcePath(fs::path const& newPath) { return pathSource = newPath; }
    fs::path const& SQLPath(fs::path const& newPath) { return pathSQL = newPath; }
    fs::path const& DocPath(fs::path const& newPath) { return pathDoc = newPath; }
 
    std::string const& BaseClass(std::string const& newVal) { return strBaseClass = newVal; }
    std::string const& BaseNamespace(std::string const& newVal) { return strBaseNamespace = newVal; }
-   fs::path const& PathToBase(fs::path const& newVal) { return pathToBase = newVal; }
+   fs::path const&    PathToBase(fs::path const& newVal) { return pathToBase = newVal; }
 
    /// \}
 
@@ -587,11 +592,12 @@ public:
    void CreateTable(std::string const& strTable, std::ostream& out) const;
    void CreateClass(std::string const& strTable, std::ostream& out) const;
 
-   void Create_Doxygen(std::ostream&) const;
-   void Create_Doxygen_SQL(std::ostream&) const;
    bool Create_SQL_Tables(std::ostream&) const;
    bool Create_SQL_Additionals(std::ostream&) const;
    bool Create_SQL_RangeValues(std::ostream&) const;
+
+   void Create_Doxygen(std::ostream&) const;
+   void Create_Doxygen_SQL(std::ostream&) const;
 
    void Create_SQL_Documentation(std::ostream&) const;
 

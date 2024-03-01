@@ -542,11 +542,45 @@ bool TMyTable::CreateDox(std::ostream& os) const {
       << "\\see system class for the table \\ref " << Doc_RefName() << "\n\n";
 
    os << "\\typedef " << FullyQualifiedSourceName() <<"::primary_key\n"
-      << "\\brief primary key for elements of this class in a container\n\n"
+      << "\\brief primary key for elements of this class in a container\n"
+      << "\n"
       << "\\typedef " << FullyQualifiedSourceName()<< "::container_ty\n"
-      << "\\brief container type as map with primary_key for elements of this class\n\n"
+      << "\\brief container type as std::map with the generated primary key type "
+      << FullyQualifiedSourceName() << "::primary_key for instances of this class\n\n"
+      << "\\details The type uses the key type " << FullyQualifiedSourceName() << "::primary_key" 
+      << "previously created from the key attributes of table \\ref " << Doc_RefName() << " as the "
+      << "key_type for the container to hold values of this class as value_type.\n"
+      << "This means that the same rules apply in the database and the program, and the data can "
+      << "be assigned quickly.\n"
+      << "\n"
       << "\\typedef " << FullyQualifiedSourceName() << "::vector_ty\n"
-      << "\\brief container type as vector for elements of this class\n\n";
+      << "\\brief container type as vector for elements of this class.\n"
+      << "\\details you can use a sort order to read data into this container or work with this later.\n"
+      << "\n";
+
+   os << "\\fn " << FullyQualifiedSourceName() << "::GetKey() const\n"
+      << "\\brief method to get the primary key for this instance\n"
+      << "\\returns type " << FullyQualifiedSourceName() << "\n"
+      << "\\throw std::runtime::error if the attribute(s) of the primary key are empty.\n"
+      << "\n";
+
+   for (auto const& [table, strType, strVar, vecKeys, vecParams] : part_of_data) {
+      os << "\\typedef " << FullyQualifiedSourceName() << "::"s << strType << "\n"
+         << "\\brief " << "composed data element for the table \\ref " << table.Doc_RefName() << "\n"
+         << "\\details This type uses the data elements of the primary key of the table that are not used in the link to this type.\n"
+         << "\\details <table><tr><th>attribute</th><th>data element</th><th>description</th></tr>\n";
+      for(auto const& id : vecKeys) {
+         auto const& attr  = table.FindAttribute(id);
+         auto const& dtype = Dictionary().FindDataType(attr.DataType());
+         os << "<tr><td>" << attr.Name() << "</td>\n"
+            << "    <td>" << table.FullyQualifiedSourceName() << "::" << dtype.Prefix() << attr.Name() << "</td>\n"
+            << "    <td>" << attr.Denotation() << "</td>\n"
+            << "</tr>\n";
+         }
+      os << "</table>\n";
+      }
+   os << "\n";
+
 
    os << "\\name constructors and destructor for this class\n"
       << "\\{\n"

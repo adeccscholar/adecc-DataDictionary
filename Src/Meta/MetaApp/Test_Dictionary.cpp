@@ -31,7 +31,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
        << "The following model diagram is created with the Embarcader E/R Studio and show the initial model from the former project."
 
        << "\\image html ER-Model.jpg\n"
-       << "\\image latex ERModelLS.jpg";
+       << "\\image latex ERModelLS.tif\n";
  
    os1 << "This model was created to show and discuss the potential of metadata and the generation "
        << "of source code, database scripts and documentation.\n"
