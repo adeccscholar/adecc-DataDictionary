@@ -140,11 +140,11 @@
     <ClCompile Include="GenerateSource.cpp" />
     <ClCompile Include="GenerateSQL.cpp" />
     <ClCompile Include="GenerateDox.cpp" />
+    <ClCompile Include="CreateReader.cpp" />
     <ClCompile Include="Test_Dictionary.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DataDictionary.h" />
-    <ClInclude Include="Berlin_Dictionary.h" />
     <ClInclude Include="Documentation\Documentation.h" />
     <ClInclude Include="Documentation\Documentation_adeccDatabase.h" />
     <ClInclude Include="Documentation\Documentation_adecc_Scholar.h" />

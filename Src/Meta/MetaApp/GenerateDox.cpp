@@ -58,7 +58,9 @@ void TMyDictionary::Create_Doxygen_SQL(std::ostream& os) const {
 
    }
 
-
+// --------------------------------------------------------------------------------------------------------------------------------
+// Create central documentation files
+// --------------------------------------------------------------------------------------------------------------------------------
 void TMyDictionary::Create_Doxygen(std::ostream& os) const {
    os << "\n";
    if (!directories.empty()) {
@@ -102,7 +104,51 @@ void TMyDictionary::Create_Doxygen(std::ostream& os) const {
          << "\\fn " << strFullName << "::copy(" << strFullName << " const& other)\n"
          << "\\brief pure virtual function to copy the concret instance of a derived class into another matching instance.\n"
          << "\\param[in] other const reference to an concrete instance of a derived class.\n\n";
-   }
+      }
+
+   if(HasPersistenceClass()) {
+      auto PathToPers = [this]() {
+         //if (PathToPersistence().root_path() == fs::path()) return SourcePath() / PathToPersistence();
+         //else 
+            return PathToPersistence();
+         }();
+
+      std::string strFullName = (PersistenceNamespace().size() > 0 ? PersistenceNamespace() + "::"s + PersistenceClass() : PersistenceClass());
+      if(PersistenceNamespace().size() > 0) {
+         os << "\\namespace " << PersistenceNamespace() << "\n"
+            << "\\brief namespace for the classes to implement the data access for all table in the project.\n\n";
+         }
+
+      os << "\\dir " << PathToPers << "\n"
+         << "\\brief directory with files for the access to database.\n\n"
+         << "\\file " << PathToPers / (PersistenceName() + "_sql.h"s) << "\n"
+         << "\\brief defintion of the necessary sql statements to work with the tables.\n\n"
+         << "\\file " << PathToPers / (PersistenceName() + "_sql.cpp"s) << "\n"
+         << "\\brief implementation of the necessary sql statements to work with the tables.\n\n"
+         << "\\file " << PathToPers / (PersistenceName() + ".h"s) << "\n"
+         << "\\brief definition of the reader class " << strFullName << " with methods for all tables for access to the database.\n\n"
+         << "\\file " << PathToPers / (PersistenceName() + ".cpp"s) << "\n"
+         << "\\brief implementation of the reader class " << strFullName << " with methods for all tables for access to the database.\n\n"
+         << "\\class " << strFullName << "\n"
+         << "\\brief class with the access methods to database for all tables.\n"
+         << "\\details this class contain all functions for the access to entities of the project << " << Name() << ".\n"
+         << "\\details The example project \\ref pgadeccDatabase is use to implement the access to the concrete database.\n"
+         << "\\details The used sql database server is from type " << PersistenceServerType() << ".\n\n";
+
+      for (auto const& [_, table] : Tables()) {
+         std::string nameSpace = PersistenceNamespace().size() > 0 ? PersistenceNamespace() + "::" : ""s;
+         os << "\\var " << nameSpace << "strSQL" << table.Name() << "All\n"
+            << "\\brief constant std string with the sql statement to read all tuples from table \\ref "s + table.Doc_RefName() << ".\n\n"
+            << "\\var " << nameSpace << "strSQL" << table.Name() << "Detail\n"
+            << "\\brief constant std string with the sql statement to read a tuple from table \\ref "s + table.Doc_RefName() << " with the primary key.\n\n"
+            << "\\fn " << strFullName << "::" << std::format("Read({0}::container_ty& data)\n", table.FullClassName())
+            << "\\brief method to read all data of the table \\ref " << table.Doc_RefName() << " in a container.\n"
+            << "\\details the method use the const std::string " << nameSpace << "strSQL" << table.Name() << "All to read the data.\n"
+            << "\\param[out] data reference to " << std::format("{0}::container_ty", table.FullClassName()) << " with the container to take the data.\n"
+            << "\\returns bool when data readed successfull (0 .. n)\n\n"
+            ;
+         }
+      }
 
    os << "\n\\mainpage " << Denotation() << '\n'
       << "\\tableofcontents\n";
@@ -123,55 +169,69 @@ void TMyDictionary::Create_Doxygen(std::ostream& os) const {
       << "prefixes which are used for the data types.\n"
       << "\\details for some data types(e.g.integers), no exact distinction is made.\n";
 
-   os << "\\details <table>\n"
-         "<tr><th>datatype<th>db datatype<th>db check"
-         "<th>src type<th>header<th>prefix<th>comment"
+   os << "\\details "
+      /*
+      << "<table><thead>\n"
+      << "<tr><th rowspan=\"2\">datatype</th>"
+      << "    <th>db datatype</th>"
+      << "    <th>db check</th>"
+      << "    <th>src type</th>"
+      << "    <th>header</th>"
+      << "    <th>prefix</th></tr>"
+      << "<tr><th colspan=\"5\">comment</th>"
+      << "</tr></thead><tbody>\n";
+   */
+      << "<table>\n"
+      << "<tr><th>datatype</th>"
+      << "    <th>db datatype</th>"
+      << "    <th>db check</th>"
+      << "    <th>src type</th>"
+      << "    <th>header</th>"
+      << "    <th>prefix</th>"
       << "</tr>\n";
-   
-   for(auto const& [name, datatype] : DataTypes()) {
-      os << "<tr><td valign=\"top\">" << "<a id=\"datatyp_" << datatype.DataType() << "\"></a>" << datatype.DataType() << '\n'
+   for(auto const& [_, datatype] : DataTypes()) {
+      os << "<tr><td rowspan= \"2\" valign=\"top\">" << "<a id=\"datatyp_" << datatype.DataType() << "\"></a>" << datatype.DataType() << '\n'
          << "    <td valign=\"top\">" << toHTML(datatype.DatabaseType().size() > 0 ? datatype.DatabaseType() : " &nbsp;"s) << '\n'
          << "    <td valign=\"top\">" << toHTML(datatype.CheckSeq().size() > 0     ? datatype.CheckSeq() :     " &nbsp;"s) << '\n'
          << "    <td valign=\"top\">" << toHTML(datatype.SourceType().size() > 0   ? datatype.SourceType() :   " &nbsp;"s) << '\n'
          << "    <td valign=\"top\">" << toHTML(datatype.Headerfile().size() > 0   ? datatype.Headerfile() :   " &nbsp;"s) << '\n'
          << "    <td valign=\"top\">" << toHTML(datatype.Prefix().size() > 0       ? datatype.Prefix() :       " &nbsp;"s) << '\n'
-         << "    <td valign=\"top\">" << toHTML(datatype.Comment().size() > 0      ? datatype.Comment() :      " &nbsp;"s) << '\n'
+         << "</tr><tr>"
+         << "    <td colspan=\"5\" valign=\"top\">" << toHTML(datatype.Comment().size() > 0 ? datatype.Comment() : " &nbsp;"s) << "</td>\n"
          << "</tr>\n";
       }
-
-
    os << "</table>\n\n";
 
 
    os << "\\section datamodel_all_tables overview about all tables\n"
       << "\\details the following tables are created or used by the application in the database:\n"
-      << "\\details <table>\n"
-      << "<tr><th>name\n"
-      << "    <th>db name\n"
-      << "    <th>type\n"
-      << "    <th>source name\n"
-      << "    <th>description\n"
-      << "</tr>\n";
+      << "\\details "
+      /*
+      << "<table><thead>\n"
+      << "<tr><th rowspan=\"2\" valign=\"top\">name</th>\n"
+      << "    <th>db name</th>\n"
+      << "    <th>type</th>\n"
+      << "    <th>source name</th></tr>\n"
+      << "<tr><th colspan=\"3\">description</th></tr>\n"
+      << "</thead><tbody>\n";
+      */
+   << "<table><thead>\n"
+      << "<tr><th>name</th>\n"
+      << "    <th>db name</th>\n"
+      << "    <th>type</th>\n"
+      << "    <th>source name</th></tr>\n"
+      << "</thead><tbody>\n";
+
 
    for (auto const& [db_name, table] : Tables()) {
-      os << "<tr><td>\\ref " << table.Doc_RefName() << '\n'
-         << "    <td>" << table.FullyQualifiedSQLName() << '\n';
-         
-      os << "    <td>";
-      switch(table.EntityType()) {
-         case EMyEntityType::table:        os << "Entity"; break;
-         case EMyEntityType::range:        os << "Domain"; break;
-         case EMyEntityType::relationship: os << "Relationship"; break;
-         case EMyEntityType::view:         os << "View"; break;
-         default: os << "unknown";
-         }
-      os << '\n';
-
-      os << "    <td>" << table.FullyQualifiedSourceName() << '\n'
-         << "    <td>" << (table.Denotation().size() > 0 ? table.Denotation() : " &nbsp;"s) << '\n'
+      os << "<tr><td rowspan=\"2\" valign=\"top\">\\ref " << table.Doc_RefName() << "</td>\n"
+         << "    <td>" << table.FullyQualifiedSQLName() << "</td>\n";
+      os << "    <td>" << table.EntityTypeTxt() << "</td>\n";
+      os << "    <td>" << table.FullyQualifiedSourceName() << "</td></tr>\n"
+         << "<tr><td colspan=\"3\">" << (table.Denotation().size() > 0 ? table.Denotation() : " &nbsp;"s) << "</td>\n"
          << "</tr>";
       }
-   os << "</table>\n\n"
+   os << "</tbody></table>\n\n"
       << "<hr><a href = \"top_of_mainpage\">top of the page</a>\n";
 
    // ----------------- create the entity relationship model for all tables ------------------------
@@ -265,7 +325,7 @@ void TMyDictionary::Create_Doxygen(std::ostream& os) const {
       os << "\n\\subsubsection " << table.Doc_RefName() << "_attributes attributes\n";
 
       os << "\\details <table>\n"
-         << "<tr><th>name\n"
+         << "<tr><th rowspan=\"2\" valign=\"center\">name\n"
          << "    <th>type\n"
          << "    <th>db type\n"
          << "    <th>size\n"
@@ -275,12 +335,12 @@ void TMyDictionary::Create_Doxygen(std::ostream& os) const {
          << "    <th>init seq\n"
          << "    <th>computed\n"
          << "    <th>source name\n"
-         << "    <th>source type\n"
-         << "    <th>description\n"
+         << "    <th>source type\n</tr>"
+         << "<tr><th colspan=\"11\">description\n"
          << "</tr>\n";
       for (auto const& attr : table.Attributes()) {
          auto const& datatype = attr.Table().Dictionary().FindDataType(attr.DataType());
-         os << "<tr><td valign =\"top\">" << attr.Name() << '\n'
+         os << "<tr><td rowspan=\"2\" valign =\"top\">" << attr.Name() << '\n'
             << "    <td valign = \"top\"><a href =\"#datatyp_" << attr.DataType() << "\">" << attr.DataType() << "</a>\n"
             << "    <td valign = \"top\">" << datatype.DatabaseType() << '\n';
          os << std::format("    <td valign = \"top\">{}\n", 
@@ -299,8 +359,8 @@ void TMyDictionary::Create_Doxygen(std::ostream& os) const {
          os << "    <td valign = \"top\">" << toHTML(attr.InitSeq().size() > 0 ? attr.InitSeq() : " &nbsp;"s) << '\n'
             << "    <td valign = \"top\">" << toHTML(attr.Computed().size() > 0 ? attr.Computed() : " &nbsp;"s) << '\n'
             << "    <td valign = \"top\">" << datatype.Prefix() + attr.Name() << '\n'
-            << "    <td valign = \"top\">" << datatype.SourceType() << '\n'
-            << "    <td valign = \"top\">" << toHTML(attr.Denotation().size() > 0 ? attr.Denotation() : " &nbsp;"s) << '\n'
+            << "    <td valign = \"top\">" << datatype.SourceType() << "</td></tr>\n"
+            << "<tr><td colspan=\"11\" valign = \"top\">" << toHTML(attr.Denotation().size() > 0 ? attr.Denotation() : " &nbsp;"s) << '\n'
             << "</tr>"; 
          }
 
@@ -416,6 +476,9 @@ void TMyDictionary::Create_Doxygen(std::ostream& os) const {
    }
 
 
+// -------------------------------------------------------------------------------------------------------------------
+//  Create Documantation for a table
+// -------------------------------------------------------------------------------------------------------------------
 bool TMyTable::CreateDox(std::ostream& os) const {
 
    auto parents         = GetParents(EMyReferenceType::generalization);
@@ -541,10 +604,142 @@ bool TMyTable::CreateDox(std::ostream& os) const {
       << "\\date " << CurrentDate() << " documentation for this project created\n"
       << "\\see system class for the table \\ref " << Doc_RefName() << "\n\n";
 
-   os << "\\typedef " << FullyQualifiedSourceName() <<"::primary_key\n"
-      << "\\brief primary key for elements of this class in a container\n"
+   // helping class for primary key
+   auto prim_attr = processing_data | std::views::filter([](auto const& a) { return std::get<0>(a).Primary(); }) | std::ranges::to<std::vector>();
+
+   os << "\\class " << FullyQualifiedSourceName() << "::primary_key\n"
+      << "\\brief primary key for elements of the class " << FullyQualifiedSourceName() << " in a container "
+      << "or when seeking an entity in the database.\n"
       << "\n"
-      << "\\typedef " << FullyQualifiedSourceName()<< "::container_ty\n"
+      << "\\fn " << FullyQualifiedSourceName() << "::primary_key::primary_key()\n"
+      << "\\brief standard constructor for the class " << FullyQualifiedSourceName() << "::primary_key\n"
+      << "\n"
+      << "\\fn " << FullyQualifiedSourceName() << "::primary_key::primary_key(primary_key const& other)\n"
+      << "\\brief copy constructor for the class " << FullyQualifiedSourceName() << "::primary_key\n"
+      << "\\param [in] other primary_key const& with the instance which values should be copied\n"
+      << "\n"
+      << "\\fn " << FullyQualifiedSourceName() << "::primary_key::primary_key(primary_key&&)\n"
+      << "\\brief move constructor for the class " << FullyQualifiedSourceName() << "::primary_key\n"
+      << "\\param [in] other primary_key&& with the instance which values should be occupied and moved to this instance\n"
+      << "\n"
+      << "\\fn " << FullyQualifiedSourceName() << "::primary_key::primary_key(" << ClassName() << " const& other)\n"
+      << "\\brief initializing constructor with an instance of the encircling class " << FullyQualifiedSourceName()
+      << " for the class " << FullyQualifiedSourceName() << "::primary_key\n"
+      << "\\note this constructor can't be constexpr because the direct manipulator of the encircling class may throw an exception\n"
+      << "\\throws std::runtime_error when a data element in the encircling class is empty\n"
+      << "\\param [in] other " << FullyQualifiedSourceName() << " const& with the instance of the encircling class which values "
+      << "should be copied\n"
+      << "\n"
+      << "\\fn " << FullyQualifiedSourceName() << "::primary_key::~primary_key()\n"
+      << "\\brief destructor for the primary_key class\n"
+      << "\n"
+
+      
+      << std::format("\\fn {0}::primary_key::primary_key({1}{2} p{3}", FullyQualifiedSourceName(), std::get<1>(prim_attr[0]).SourceType(),
+                                                                  (std::get<1>(prim_attr[0]).UseReference() ? " const&" : ""),
+                                                                   std::get<0>(prim_attr[0]).Name());
+   for (auto const& [attr, dtype] : prim_attr | std::views::drop(1))
+      os << std::format(", {0}{1} p{2}", dtype.SourceType(), (dtype.UseReference() ? " const&" : ""), attr.Name());
+   os << ")\n"
+      << "\\brief initializing constructor with the values for key attributes of the primary_key class\n";
+   for (auto const& [attr, dtype] : prim_attr) {
+      os << std::format("\\param [in] p{0} {1} {2} with {3}\n", attr.Name(), dtype.SourceType(), (dtype.UseReference() ? " const&" : ""), attr.Denotation());
+      }
+   os << "\n";
+   for (auto const& [attr, dtype] : prim_attr) {
+      std::string strFullAttr   = FullyQualifiedSourceName() + "::primary_key::"s + dtype.Prefix() + attr.Name();
+      std::string strFullMethod = FullyQualifiedSourceName() + "::primary_key::"s + attr.Name();
+
+      std::string strNote1 = "Source: key member "s + strFullAttr + " in class " + FullyQualifiedSourceName() + "::primary_key with the type "s + dtype.SourceType();
+      std::string strNote2 = "Database: primary key attribute \""s + attr.DBName() + "\" in entity \\ref "s + Doc_RefName() + " with database type "s + dtype.DatabaseType();
+
+      // direct data elements
+      os << "\\var " << strFullAttr << "\n";
+      if (attr.Denotation().size() > 0)
+         os << "\\brief " << attr.Denotation() << '\n'
+         << "\\details " << strNote1 << '\n';
+      else
+         os << "\\brief " << strNote1 << '\n';
+      os << "\\details " << strNote2 << '\n';
+
+      os << "\\fn " << strFullMethod << "() const\n"
+         << "\\brief selector for the data element " << strFullAttr << "\n"
+         << "\\returns " << dtype.SourceType() << (dtype.UseReference() ? " const& " : "") << " with the value for this member.\n"
+         << "\\fn " << strFullMethod << "(" << dtype.SourceType() << (dtype.UseReference() ? " const&" : "") << " newVal)\n"
+         << "\\brief manipulator for the data element " << strFullAttr << "\n"
+         << "\\param[in] newVal " << dtype.SourceType() << (dtype.UseReference() ? " const& " : "") << " with the value of the member.\n"
+         << "\\returns " << dtype.SourceType() << (dtype.UseReference() ? " const& " : "") << " with the new value for this member.\n";
+
+      }
+
+   // conversion operator for the encircling class
+   os << "\\fn " << FullyQualifiedSourceName() << "::primary_key::operator " << ClassName() << " () const\n"
+      << "\\brief conversion operator for the encircling class\n"
+      << "\\returns value of an instance of the encircling class " << FullyQualifiedSourceName() << "\n\n";
+
+   // relational operators for the key class
+   os << "\\fn " << FullyQualifiedSourceName() << "::primary_key::_compare(primary_key const&) const\n"
+      << "\\brief internal help function to compare the current instance with to another instance of the same class.\n"
+      << "\\details the comparison is performed using a lambda function, \"comp_help\", which compares two objects and "
+      << "returns -1 if the left - hand side (lhs) is less than the right - hand side(rhs), 1 if lhs is greater than rhs, "
+      << "and 0 if they are equal. the member while compared in the order they are in the dictionary one after the other, "
+      << "so long the values of the both instances are equal.\n"
+      << "\\param [in] other a constant reference to another object of the same class whose is being compared with the current "
+      << "object's values.\n"
+      << "\\return an integer value representing the result of the comparison:\n"
+      << "<ul>"
+      << "<li> returns  0 if the values of both objects are equal.</li>\n"
+      << "<li>returns -1 if the values of the current object is less than values of the other object.</li>\n"
+      << "<li>returns  1 if the values of the current object are greater than the values of the other object.</li>\n"
+      << "</ul>"
+      << "\n"
+      << "\\fn " << FullyQualifiedSourceName() << "::primary_key::operator == (primary_key const&) const\n"
+      << "\\brief checks whether the object is equal to another object of the same primary key class.\n"
+      << "\\details this operator use the internal function primary_key::_compare() as implemetation and compare "
+      << "the member in the sequence they are found in the dictionary."
+      << "\\param other a constant reference to another object of the same class primary_key.\n"
+      << "\\return boolean value, true if the objects are equal, false otherwise.\n"
+      << "\n"
+      << "\\fn " << FullyQualifiedSourceName() << "::primary_key::operator != (primary_key const&) const\n"
+      << "\\brief checks whether the object is not equal to another object of the same class.\n"
+      << "\\details this operator use the internal function primary_key::_compare() as implemetation and compare "
+      << "the member in the sequence they are found in the dictionary."
+      << "\\param other a constant reference to another object of the same class primary_key.\n"
+      << "\\return boolean value, true if the objects are not equal, false otherwise.\n"
+      << "\n"
+      << "\\fn " << FullyQualifiedSourceName() << "::primary_key::operator < (primary_key const&) const\n"
+      << "\\brief checks whether the object is less than the other object of the same class.\n"
+      << "\\details this operator use the internal function primary_key::_compare() as implemetation and compare "
+      << "the member in the sequence they are found in the dictionary."
+      << "\\param other a constant reference to another object of the same class primary_key.\n"
+      << "\\return boolean value, true if the object is less than to the other object, false otherwise.\n"
+      << "\n"
+      << "\\fn " << FullyQualifiedSourceName() << "::primary_key::operator <= (primary_key const&) const\n"
+      << "\\brief checks whether the object is less than or equal to the other object of the same class.\n"
+      << "\\details this operator use the internal function primary_key::_compare() as implemetation and compare "
+      << "the member in the sequence they are found in the dictionary."
+      << "\\param other a constant reference to another object of the same class primary_key.\n"
+      << "\\return boolean value, true if the object is less than or equal to the other object, false otherwise.\n"
+      << "\n"
+      << "\\fn " << FullyQualifiedSourceName() << "::primary_key::operator > (primary_key const&) const\n"
+      << "\\brief checks whether the object is greater than the other object of the same class.\n"
+      << "\\details this operator use the internal function primary_key::_compare() as implemetation and compare "
+      << "the member in the sequence they are found in the dictionary."
+      << "\\param other a constant reference to another object of the same class primary_key.\n"
+      << "\\return boolean value, true if the object is greater than to the other object, false otherwise.\n"
+      << "\n"
+      << "\\fn " << FullyQualifiedSourceName() << "::primary_key::operator >= (primary_key const&) const\n"
+      << "\\brief checks whether the object is greater than or equal the other object of the same class.\n"
+      << "\\details this operator use the internal function primary_key::_compare() as implemetation and compare "
+      << "the member in the sequence they are found in the dictionary."
+      << "\\param other a constant reference to another object of the same class primary_key.\n"
+      << "\\return boolean value, true if the object is greater than or equal to the other object, false otherwise.\n"
+      << "\n";
+
+
+
+   // helping types for composed data
+   os << "\\typedef " << FullyQualifiedSourceName()<< "::container_ty\n"
       << "\\brief container type as std::map with the generated primary key type "
       << FullyQualifiedSourceName() << "::primary_key for instances of this class\n\n"
       << "\\details The type uses the key type " << FullyQualifiedSourceName() << "::primary_key" 
@@ -603,9 +798,16 @@ bool TMyTable::CreateDox(std::ostream& os) const {
       << "\\{\n"
       << "\\fn " << FullyQualifiedSourceName() << "::swap(" << ClassName() << "& other)"
       << "\\brief swap method for elements of this class, swap the paramter with the instance variables of this instance\n"
-      << "\\param[in] other reference of an other instance of the same type to swap the content\n\n"
+      << "\\param[in] other reference of an other instance of the same type to swap the content\n"
+      << "\n"
       << "\\fn " << FullyQualifiedSourceName() << "::init();\n"
-      << "\\brief method to init this instance with empty / default values (reset it)\n\n";
+      << "\\brief method to init this instance with empty / default values (reset it)\n"
+      << "\n"
+      << "\\fn " << FullyQualifiedSourceName() << "::init(primary_key const& key_values)\n"
+      << "\\brief method to initialiaze an instance and copy the values of a primary key into it\n"
+      << "\\param[in] key_values a const reference to primary_key type to init this instance\n"
+      << "\\returns a reference to the instance\n"
+      << "\n";
 
    if (Dictionary().UseBaseClass()) {
       auto param_ty = Dictionary().BaseNamespace() != Namespace() ? Dictionary().BaseNamespace() + "::"s + Dictionary().BaseClass() : Dictionary().BaseClass();

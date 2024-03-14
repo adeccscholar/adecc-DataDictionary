@@ -7,8 +7,13 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
    dictionary.BaseClass("TSimplePersonBase");
    dictionary.BaseNamespace("myCorporate");
-   dictionary.PathToBase("System/Corporate/base.h");
+   dictionary.PathToBase("System\\Corporate\\base.h");
 
+   dictionary.PersistenceClass("TPersonReader");
+   dictionary.PersistenceName("person_reader");
+   dictionary.PersistenceNamespace("reader");
+   dictionary.PersistenceServerType("TMyMSSQL");
+   dictionary.PersistenceDatabase("Test_Personen");
 
    os1 << "Model for a simple management of personal data for testing and presenting the use of "
        << "metadata with a generator and for discussing the possibilities of using metadata.\n"
@@ -23,12 +28,12 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
        << "The advantage of using generators that work on the basis of metadata is not only the enormous time saving, "
        << "but also the correctness. This means that all parts are up-to-date and 100% aligned with each other.\n"
 
-       << "The basis for this model was taken from a training project by adecc Systemhaus GmbH and expanded once again. "
-       << "The following image show a draft paper / scratch pad of the background for this trainings project."
+       << "The basis for this model was taken from a training project by adecc Systemhaus GmbH and expanded once again.\n"
+       << "The following image show a draft paper / scratch pad of the background for this trainings project.\n"
        << "\\image html Kladde.jpg\n"
        << "\\image latex Kladde.jpg\n"
 
-       << "The following model diagram is created with the Embarcader E/R Studio and show the initial model from the former project."
+       << "The following model diagram is created with the Embarcader E/R Studio and show the initial model from the former project.\n"
 
        << "\\image html ER-Model.jpg\n"
        << "\\image latex ERModelLS.tif\n";
@@ -119,14 +124,14 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
                            "This folder contains all header and source files for the system layer of the application.\n"
                            "Its possible that you will find Subfolder for different namespaces here.");
 
-   dictionary.AddDirectory("System/Corporate", "subfolder with header and source files for the common source files.",
+   dictionary.AddDirectory("System\\Corporate", "subfolder with header and source files for the common source files.",
                            "This folder contains all header and source files for the corparate system layer.");
 
-   dictionary.AddDirectory("System/HR", "subfolder with header and source files for the source files for human resources.",
+   dictionary.AddDirectory("System\\HR", "subfolder with header and source files for the source files for human resources.",
                             "This folder contains all header and source files for the system layer of the part of "
                             "human resources");
 
-   dictionary.AddTable("Address", EMyEntityType::table, "Address", "dbo", "Address", "myCorporate", "System/Corporate", "SQL", "information on the addresses where a person lives, works or has any other relationship with them")
+   dictionary.AddTable("Address", EMyEntityType::table, "Address", "dbo", "Address", "myCorporate", "System\\Corporate", "SQL", "information on the addresses where a person lives, works or has any other relationship with them.")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "attribute as Foreign key from an attribute ID of the person entity to whom the address belongs")
       .AddAttribute(2, "AddressType", "AddressType", "integer", 0, 0, true, true, "", "", "", "extension of the key by the address type to manage different addresses for one person")
       .AddAttribute(3, "Zipcode", "Zipcode", "varchar", 10, 0, true, false, "", "", "", "Zip code for the address")
@@ -142,7 +147,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddIndex("idx_Address_City_Street", EMyIndexType::undefined, "access path to search for city / street combinations in addresses", { { 4, true }, { 5, true } });
       ;
 
-   dictionary.AddTable("AddressTypes", EMyEntityType::range, "AddressTypes", "dbo", "AddressTypes", "myCorporate", "System/Corporate", "SQL", "domain / range of values for address types, this is an extension of the relationship between persons and addresses.")
+   dictionary.AddTable("AddressTypes", EMyEntityType::range, "AddressTypes", "dbo", "AddressTypes", "myCorporate", "System\\Corporate", "SQL", "domain / range of values for address types, this is an extension of the relationship between persons and addresses.")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number for a record in this domain with address types")
       .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique description of an entry in the domain, display in selections, comboboxes, … (key canditate)")
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "non-representative abbreviation that can be used for a short advertisement for this address")
@@ -160,7 +165,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       ;
 
-   dictionary.AddTable("Banking", EMyEntityType::table, "Banking", "dbo", "Banking", "myCorporate", "System/Corporate", "SQL", "informations about the account details provided by a person and used in a specific context")
+   dictionary.AddTable("Banking", EMyEntityType::table, "Banking", "dbo", "Banking", "myCorporate", "System\\Corporate", "SQL", "informations about the account details provided by a person and used in a specific context")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "attribute as foreign key from an attribute ID of a person entity to which these account details belong")
       .AddAttribute(2, "BankingType", "BankingType", "integer", 0, 0, true, true, "", "", "", "extension of the account details key in order to be able to save several / different bank details in a standardized way")
       .AddAttribute(3, "BankName", "BankName", "varchar", 50, 0, false, false, "", "", "", "name of the bank that manages this account (not necessarily required)")
@@ -178,7 +183,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       ;
 
-   dictionary.AddTable("BankingTypes", EMyEntityType::range, "BankingTypes", "dbo", "BankingTypes", "myCorporate", "System/Corporate", "SQL", "domain / range of values for banking types, this is an extension of the relationship between persons and banking accounts.")
+   dictionary.AddTable("BankingTypes", EMyEntityType::range, "BankingTypes", "dbo", "BankingTypes", "myCorporate", "System\\Corporate", "SQL", "domain / range of values for banking types, this is an extension of the relationship between persons and banking accounts.")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number for a record in this domain with banking types")
       .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique description of an banking type entity in the domain, used in selections, comboboxes, … (key canditate)")
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "non-representative abbreviation that can be used for a short advertisement for this banking type")
@@ -193,7 +198,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       ;
 
-   dictionary.AddTable("Countries", EMyEntityType::table, "Countries", "dbo", "Countries", "myCorporate", "System/Corporate", "SQL", "table with the countries and additional values for the countries. Used by others for assoziation.")
+   dictionary.AddTable("Countries", EMyEntityType::table, "Countries", "dbo", "Countries", "myCorporate", "System\\Corporate", "SQL", "table with the countries and additional values for the countries. Used by others for assoziation.")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number for a record in the table Countries")
       .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique, official designation of the country, key candidate")
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "abbreviation of the country for the program (iso code 3166 - alpha 3)")
@@ -223,7 +228,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddCleanings("DROP FUNCTION [dbo].[Country_Dialing]")
       ;
 
-   dictionary.AddTable("Departments", EMyEntityType::table, "Departments", "dbo", "Departments", "myHR", "System/HR", "SQL", "independent entity with the departments in the company, independent identity")
+   dictionary.AddTable("Departments", EMyEntityType::table, "Departments", "dbo", "Departments", "myHR", "System\\HR", "SQL", "independent entity with the departments in the company, independent identity")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identifications number of the department. primary key and used for assoziations")
       .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "distinct name of the department in the company. used to identify this and use in application for select")
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "used abbreviation of the department for list and such")
@@ -238,10 +243,10 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       ;
 
-   dictionary.AddTable("Employees", EMyEntityType::table, "Employees", "dbo", "Employees", "myHR", "System/HR", "SQL", "information about the employees in the company (generalization of a person)")
+   dictionary.AddTable("Employees", EMyEntityType::table, "Employees", "dbo", "Employees", "myHR", "System\\HR", "SQL", "information about the employees in the company (generalization of a person)")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "attribute as foreign key from an attribute ID of a person entity to which these account details belong")
       .AddAttribute(2, "PersonNumber", "PersonNumber", "varchar", 15, 0, true, false, "", "", "", "unique HR number of the employee in the company, assigned by the HR department")
-      .AddAttribute(3, "Salery", "Salery", "decimal", 10, 2, false, false, ">= 0.0", "", "", "salary / income that the employee currently receives, dependant by the SalaryBase")
+      .AddAttribute(3, "Salary", "Salary", "decimal", 10, 2, false, false, ">= 0.0", "", "", "salary / income that the employee currently receives, dependant by the SalaryBase")
       .AddAttribute(4, "SalaryType", "SalaryType", "integer", 0, 0, false, false, "", "", "", "range for SalaryType with the kind of Salary and determine the SalaryBase for the calculation")
       .AddAttribute(5, "TaxClass", "TaxClass", "integer", 0, 0, true, false, "", "", "", "Tax class currently held by the employee")
       .AddAttribute(6, "StartOfJob", "StartOfJob", "date", 0, 0, true, false, "", "", "", "starting date of the employee in the company (can be extended later for the start of the current position)")
@@ -268,7 +273,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       ;
 
-   dictionary.AddTable("FamilyStatus", EMyEntityType::range, "FamilyStatus", "dbo", "FamilyStatus", "myCorporate", "System/Corporate", "SQL", "domain / range of values for family status, this is used in person to qualifify the actual status, maybe a date needed too")
+   dictionary.AddTable("FamilyStatus", EMyEntityType::range, "FamilyStatus", "dbo", "FamilyStatus", "myCorporate", "System\\Corporate", "SQL", "domain / range of values for family status, this is used in person to qualifify the actual status, maybe a date needed too")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number for a record in this domain with family status")
       .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique description of a family status entity in the domain, used in selections, comboboxes, … (key canditate)")
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "non-representative abbreviation that can be used for a short advertisement for this family status")
@@ -290,7 +295,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       ;
 
-   dictionary.AddTable("FamilyTypes", EMyEntityType::range, "FamilyTypes", "dbo", "FamilyTypes", "myCorporate", "System/Corporate", "SQL", "domain / range of values for family types, this is used in form of address to qualifify the person gender")
+   dictionary.AddTable("FamilyTypes", EMyEntityType::range, "FamilyTypes", "dbo", "FamilyTypes", "myCorporate", "System\\Corporate", "SQL", "domain / range of values for family types, this is used in form of address to qualifify the person gender")
       .AddAttribute(  1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number for a record in this domain with family types")
       .AddAttribute(  2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique description of a family type entity in the domain, used in selections, comboboxes, … (key canditate)")
       .AddAttribute(  3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "non-representative abbreviation that can be used for a short advertisement for this banking type")
@@ -313,7 +318,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       ;
 
-   dictionary.AddTable("FormOfAddress", EMyEntityType::range, "FormOfAddress", "dbo", "FormOfAddress", "myCorporate", "System/Corporate", "SQL", "domain with the possible values for form of addresses with additional informations for this")
+   dictionary.AddTable("FormOfAddress", EMyEntityType::range, "FormOfAddress", "dbo", "FormOfAddress", "myCorporate", "System\\Corporate", "SQL", "domain with the possible values for form of addresses with additional informations for this")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number of the form of address to use it in relationships")
       .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique description of  this form of address entity in the domain, used in selections, comboboxes, … (key canditate)")
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "non-representative abbreviation that can be used for a short advertisement for this form of address")
@@ -335,7 +340,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
      
       ;
 
-   dictionary.AddTable("Internet", EMyEntityType::table, "Internet", "dbo", "Internet", "myCorporate", "System/Corporate", "SQL", "connections for different kinds of communications about the internet as part of persons (part of relationship)")
+   dictionary.AddTable("Internet", EMyEntityType::table, "Internet", "dbo", "Internet", "myCorporate", "System\\Corporate", "SQL", "connections for different kinds of communications about the internet as part of persons (part of relationship)")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number of the person to whom the internet connection data belongs (foreign key from person)")
       .AddAttribute(2, "InternetType", "InternetType", "integer", 0, 0, true, true, "", "", "", "type of internet connection data (value range from InternetType as foreign key, extension to 1:n relationship))")
       .AddAttribute(3, "Adresse", "Adresse", "varchar", 100, 0, true, false, "", "", "", "internet address for this connection, possible to split the protocol to the value table InternetTypes")
@@ -346,7 +351,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddIndex("idxInternet_Address", EMyIndexType::undefined, "access path to seach a address of internet connection", { { 3, true } })
       ;
 
-   dictionary.AddTable("InternetTypes", EMyEntityType::range, "InternetTypes", "dbo", "InternetTypes", "myCorporate", "System/Corporate", "SQL", "domain / range of values for internet connection types, this is an extension of the relationship between persons and internet connections.")
+   dictionary.AddTable("InternetTypes", EMyEntityType::range, "InternetTypes", "dbo", "InternetTypes", "myCorporate", "System\\Corporate", "SQL", "domain / range of values for internet connection types, this is an extension of the relationship between persons and internet connections.")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number for a record in this domain with internet connection types")
       .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique description of an internet connection type entity in the domain, used in selections, comboboxes, … (key canditate)")
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "non-representative abbreviation that can be used for a short advertisement for this internet connection type")
@@ -365,7 +370,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       ;
    
-   dictionary.AddTable("JobPositions", EMyEntityType::table, "JobPositions", "dbo", "JobPositions", "myHR", "System/HR", "SQL", "domain or range of values for different positions for the employee. Important as anchor for additional informations")
+   dictionary.AddTable("JobPositions", EMyEntityType::table, "JobPositions", "dbo", "JobPositions", "myHR", "System\\HR", "SQL", "domain or range of values for different positions for the employee. Important as anchor for additional informations")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number for a record in this domain with positions in job")
       .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique denotation for this job position, used in selections, and lists to descripe this position")
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "abbreviation for this job position, used in overvies. Can be null and don't need be unique")
@@ -380,7 +385,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       ;
 
-   dictionary.AddTable("Person", EMyEntityType::table, "Person", "dbo", "Person", "myCorporate", "System/Corporate", "SQL", "informations about a person, base for different kinds of special persons in other areas of the company")
+   dictionary.AddTable("Person", EMyEntityType::table, "Person", "dbo", "Person", "myCorporate", "System\\Corporate", "SQL", "informations about a person, base for different kinds of special persons in other areas of the company")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number for a entity of person")
       .AddAttribute(2, "Name", "Name", "varchar", 30, 0, true, false, "", "", "", "family name of the natural person respectively the name for a legal entity")
       .AddAttribute(3, "Firstname", "Firstname", "varchar", 30, 0, false, false, "", "", "", "first name of the natural person respectively a name extenstion for a legal entity")
@@ -397,7 +402,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddIndex("idx_Person_Name_Firstname", EMyIndexType::undefined, "access path to search for name and / or firstname in a person", { { 2, true }, { 3, true } })
       ;
 
-   dictionary.AddTable("Phone", EMyEntityType::table, "Phone", "dbo", "Phone", "myCorporate", "System/Corporate", "SQL", "phone connections of persons (part of relationship)")
+   dictionary.AddTable("Phone", EMyEntityType::table, "Phone", "dbo", "Phone", "myCorporate", "System\\Corporate", "SQL", "phone connections of persons (part of relationship)")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number of the person to whom the phone data belongs (foreign key from person)")
       .AddAttribute(2, "PhoneType", "PhoneType", "integer", 0, 0, true, true, "", "", "", "type of telephone data (value range from PhoneType as foreign key, extension to 1:n relationship))")
       .AddAttribute(3, "AreaCode", "AreaCode", "varchar", 10, 0, true, false, "", "", "", "area code or network code of the telephone connection")
@@ -413,7 +418,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddIndex("idx_Phone_Number", EMyIndexType::undefined, "access path to search a phone number", { { 3, true }, { 4, true } })
       ;
 
-   dictionary.AddTable("PhonesTypes", EMyEntityType::range, "PhoneTypes", "dbo", "PhonesTypes", "myCorporate", "System/Corporate", "SQL", "domain / range of values for phone types, this is an extension of the relationship between persons and phone.")
+   dictionary.AddTable("PhonesTypes", EMyEntityType::range, "PhoneTypes", "dbo", "PhonesTypes", "myCorporate", "System\\Corporate", "SQL", "domain / range of values for phone types, this is an extension of the relationship between persons and phone.")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number for a record in this domain with phone types")
       .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique description of a phone type entity in the domain, used in selections, comboboxes, … (key canditate)")
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "non-representative abbreviation that can be used for a short advertisement for this phone  type")
@@ -430,7 +435,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
        ;
 
-   dictionary.AddTable("ReasonDeparture", EMyEntityType::range, "ReasonDeparture", "dbo", "ReasonDeparture", "myHR", "System/HR", "SQL", "doman range with the reason of departure of the employee")
+   dictionary.AddTable("ReasonDeparture", EMyEntityType::range, "ReasonDeparture", "dbo", "ReasonDeparture", "myHR", "System\\HR", "SQL", "doman range with the reason of departure of the employee")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number / id of the reason of the departure")
       .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique denotation for the reason of the departure")
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "abbreviation for the reason of the departure, used in the application for a compact display")
@@ -448,7 +453,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       ;
 
-   dictionary.AddTable("ReasonNonWorking", EMyEntityType::range, "ReasonNonWorking", "dbo", "ReasonNonWorking", "myHR", "System/HR", "SQL", "domain / range with the reasons of non working time / idle time")
+   dictionary.AddTable("ReasonNonWorking", EMyEntityType::range, "ReasonNonWorking", "dbo", "ReasonNonWorking", "myHR", "System\\HR", "SQL", "domain / range with the reasons of non working time / idle time")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number / id of the reason of non working times / idle times")
       .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique denotation for the reason of the non working times / idle times")
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "abbreviation for the reason of the non working times / idle times, used in the application for a compact display")
@@ -467,7 +472,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       ;
 
-   dictionary.AddTable("SalaryBase", EMyEntityType::range, "SalaryBase", "dbo", "SalaryBase", "myHR", "System/HR", "SQL", "fix domain for the calculation, this value determine the base for the salary, used in table SalaryType")
+   dictionary.AddTable("SalaryBase", EMyEntityType::range, "SalaryBase", "dbo", "SalaryBase", "myHR", "System\\HR", "SQL", "fix domain for the calculation, this value determine the base for the salary, used in table SalaryType")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "ID for this Base of Salary (0 = free, 1 = hourly, 2 = dayly, 3 = monthly). Extentable via model, needed for calculations")
       .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique description / donation for this base of salary. The algorithm use the id , the text is for display or select")
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "unique abbreviation for this base of salary. The algorithm use the id , the text is for display or select")
@@ -485,7 +490,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       ;
 
-   dictionary.AddTable("SalaryType", EMyEntityType::range, "SalaryType", "dbo", "SalaryType", "myHR", "System/HR", "SQL", "kind of salary as range value and base for calculations (flix, bonus, hourly, dayly, monthly, …)")
+   dictionary.AddTable("SalaryType", EMyEntityType::range, "SalaryType", "dbo", "SalaryType", "myHR", "System\\HR", "SQL", "kind of salary as range value and base for calculations (flix, bonus, hourly, dayly, monthly, ...)")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "")
       .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "")
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "")
@@ -497,7 +502,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       ;
 
-   dictionary.AddTable("TaxClasses", EMyEntityType::table, "TaxClasses", "dbo", "TaxClasses", "myHR", "System/HR", "SQL", "tax class in germany to use it with employees (not a range, but very similar)")
+   dictionary.AddTable("TaxClasses", EMyEntityType::table, "TaxClasses", "dbo", "TaxClasses", "myHR", "System\\HR", "SQL", "tax class in germany to use it with employees (not a range, but very similar)")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number for a record in this domain with tax classes, used as key and attribute for relationships")
       .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique identification number for a record in this domain with tax class types, used in the programm to indentify this tax class, as selection in comboboxes and such")
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "unique abbreviation of a tax class entity in the domain, used in overviews and reports")
@@ -520,7 +525,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       ;
 
 
-   dictionary.AddTable("WD_Holidays", EMyEntityType::table, "WD_Holidays", "dbo", "WD_Holidays", "myHR", "System/HR", "SQL", "entities with public holidays, in relation to working days table to determine non working days")
+   dictionary.AddTable("WD_Holidays", EMyEntityType::table, "WD_Holidays", "dbo", "WD_Holidays", "myHR", "System\\HR", "SQL", "entities with public holidays, in relation to working days table to determine non working days")
       .AddAttribute(1, "CalendarDay", "CalendarDay", "date", 0, 0, true, true, "", "", "", "calendar day on which the holiday is")
       .AddAttribute(2, "Donation", "Donation", "varchar", 50, 0, true, false, "", "", "", "specification of the holiday as text")
       .AddAttribute(3, "Share", "Share", "integer", 0, 0, true, false, "", "", "", "share of the holiday (addition for later extension, e.g. holy eve as a half holiday)")
@@ -543,7 +548,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       ;
 
-   dictionary.AddTable("WD_Months", EMyEntityType::range, "WD_Months", "dbo", "WD_Months", "myHR", "System/HR", "SQL", "domain with months for human resources, actually used for working time, later for processes too. This range make it possible additional informations to adding later. This isn't a typical range value.")
+   dictionary.AddTable("WD_Months", EMyEntityType::range, "WD_Months", "dbo", "WD_Months", "myHR", "System\\HR", "SQL", "domain with months for human resources, actually used for working time, later for processes too. This range make it possible additional informations to adding later. This isn't a typical range value.")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "BETWEEN 1 AND 12", "", "", "unique identification number for a record in this domain with monthes for human resources")
       .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique denotation for a record in this domain with months, used in the programm to indentify this month, as selection in comboboxes and such")
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, true, false, "", "", "", "unique abbreviation of a month in the domain, used in overviews and reports")
@@ -581,7 +586,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddCleanings("DROP FUNCTION [dbo].[GetQuarterOfMonth]")
       ;
 
-   dictionary.AddTable("WD_NonWorking", EMyEntityType::table, "WD_NonWorking", "dbo", "WD_NonWorking", "myHR", "System/HR", "SQL", "entity set with non working days. Extensions possible, responsible for this table is HR.")
+   dictionary.AddTable("WD_NonWorking", EMyEntityType::table, "WD_NonWorking", "dbo", "WD_NonWorking", "myHR", "System\\HR", "SQL", "entity set with non working days. Extensions possible, responsible for this table is HR.")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "attribute as foreign key from an attribute ID of a employee entity to who as idle this time")
       .AddAttribute(2, "StartAt", "StartAt", "date", 0, 0, true, true, "", "", "", "date when the non working time starts as foreign key from the wokdays table")
       .AddAttribute(3, "ClosingAt", "ClosingAt", "date", 0, 0, false, false, "", "", "", "date when the non working time finishing. Value must exists in workdays, but isn't in the key. May be open")
@@ -595,7 +600,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       ;
 
-   dictionary.AddTable("WD_Weekdays", EMyEntityType::range, "WD_Weekdays", "dbo", "WD_Weekdays", "myHR", "System/HR", "SQL", "domain for days of week, used for table working time. Possible to extent with informations. In area HR only")
+   dictionary.AddTable("WD_Weekdays", EMyEntityType::range, "WD_Weekdays", "dbo", "WD_Weekdays", "myHR", "System\\HR", "SQL", "domain for days of week, used for table working time. Possible to extent with informations. In area HR only")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number for a record in this domain with weekdays for human resources")
       .AddAttribute(2, "Denotation", "Denotation", "varchar", 20, 0, true, false, "", "", "", "unique denation for this weekday ")
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 5, 0, true, false, "", "", "", "unique abbreviation for this weekday ")
@@ -628,7 +633,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       ;
 
-   dictionary.AddTable("WD_Workdays", EMyEntityType::table, "WD_Workdays", "dbo", "WD_Workdays", "myHR", "System/HR", "SQL", "domain with all days, additional informations and as owner of all recorded working time and non-working times")
+   dictionary.AddTable("WD_Workdays", EMyEntityType::table, "WD_Workdays", "dbo", "WD_Workdays", "myHR", "System\\HR", "SQL", "domain with all days, additional informations and as owner of all recorded working time and non-working times")
       .AddAttribute(1, "CalendarDay", "CalendarDay", "date", 0, 0, true, true, "", "", "", "calendar day. is used as a key in all day-dependent time accounting tables. it is the basis for the calculated fields that are provided also")
       .AddAttribute(2, "CalendarWeekday", "CalendarWeekday", "integer", 0, 0, true, false, "", "", "", "day in the calendar week (values between 0 .. 6). The field referencing to the table with weekdays to get rules. set as a data element to avoid calculations, possible server settings and deviations from various standards")
       .AddAttribute(3, "CalendarWeek", "CalendarWeek", "integer", 0, 0, true, false, "", "", "", "calendar week. set as a data element to avoid calculations, possible server settings and deviations from various standards")
@@ -646,7 +651,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       ;
 
-   dictionary.AddTable("WorkingTime", EMyEntityType::table, "WorkingTime", "dbo", "WorkingTime", "myHR", "System/HR", "SQL", "entity with the working times for an employee, as a composition for these.")
+   dictionary.AddTable("WorkingTime", EMyEntityType::table, "WorkingTime", "dbo", "WorkingTime", "myHR", "System\\HR", "SQL", "entity with the working times for an employee, as a composition for these.")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "attribute as foreign key from an attribute ID of a employee entity to who as worked these time")
       .AddAttribute(2, "StartingTime", "StartingTime", "datetime", 0, 0, true, true, "", "", "", "date and time at which this work block started as timestamp")
       .AddAttribute(3, "ClosingTime", "ClosingTime", "datetime", 0, 0, false, false, "[convert(date, ClosingTime) = DayOfWork and ClosingTime > StartingTime]", "{ }", "", "date and time at which this block of work finished as timestamp")

@@ -36,12 +36,12 @@
     <ClCompile Include="GenerateDox.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="CreateReader.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DataDictionary.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="Berlin_Dictionary.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="Documentation\Documentation.h">

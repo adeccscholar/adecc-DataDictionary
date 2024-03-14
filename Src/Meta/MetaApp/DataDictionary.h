@@ -39,6 +39,31 @@ inline std::string CurrentDate(std::chrono::time_point<std::chrono::system_clock
    return std::format("{:%d.%m.%Y}", cz_ts);
    }
 
+struct my_indent {
+   int iCnt;
+   int iSize;
+
+   explicit my_indent(int cnt, int size = 3) : iCnt(cnt), iSize(size) {}
+   std::string string() const { return std::string(iCnt * iSize, ' '); }
+   };
+
+// overloading for the << operator for my_indent as strem manipulator
+inline std::ostream& operator << (std::ostream& os, my_indent const& mi) {
+   return os << std::format("{:>{}}", "", mi.iCnt * mi.iSize);
+   }
+
+template <>
+struct std::formatter<my_indent> {
+   constexpr auto parse(format_parse_context& ctx) {
+      return ctx.begin();
+   }
+
+   template <typename FormatContext>
+   auto format(my_indent const& p, FormatContext& ctx) const {
+      return std::format_to(ctx.out(), "{}", p.string());
+      }
+   };
+
 
 class TMyDatatype;
 class TMyDictionary;
@@ -316,9 +341,9 @@ public:
    std::string const& SourceName() const { return std::get<4>(data); }
    std::string const& Namespace() const { return std::get<5>(data); }
    std::string        ClassName() const { return "T"s + SourceName(); }
-   std::string        FullClassName() const { return Namespace() + "::"s + ClassName(); }
+   std::string        FullClassName() const { return (Namespace().size() > 0 ? Namespace() + "::"s : ""s) + ClassName(); }
 
-
+   std::string EntityTypeTxt() const;
    
    std::string const& SrcPath() const { return std::get<6>(data); }
    std::string const& SQLPath() const { return std::get<7>(data); }
@@ -494,7 +519,13 @@ class TMyDictionary {
    std::string strBaseClass;                    ///< BaseClass for all Classes. BaseClass created and used if set
    std::string strBaseNamespace;                ///< namespace for the BaseClass 
    fs::path    pathToBase;                      ///< path with filename to BaseClass, relative to SourcePath !! 
-
+   
+   std::string strPersistenceClass;             ///< Persistence class for our system. Persistence Class created and used if set
+   std::string strPersistenceNamespace;         ///< namespace for the Persistence class 
+   std::string strPersistenceName;              ///< file name of our Persistence class
+   fs::path    pathToPersistence;               ///< path without filename to Persistence class, relative to SourcePath !! 
+   std::string strPersistenceServerType;        ///< servertype for the database connection of the application (could be TMyMSSQL TMyMySQL TMyOracle TMyInterbase TMySQLite)
+   std::string strPersistenceDatabase;          ///< name of the database of the application
 
    myDataTypes   datatypes;                     ///< container with the datatypes for this project
    myTables      tables;                        ///< container with all tables inside of this project
@@ -534,6 +565,17 @@ public:
    std::string const& BaseNamespace() const { return strBaseNamespace; } 
    fs::path const&    PathToBase() const { return pathToBase; }
 
+   bool               HasPersistenceClass() const { return strPersistenceClass.size() > 0; }
+   std::string const& PersistenceClass() const { return strPersistenceClass; }
+   std::string const& PersistenceName() const { return  strPersistenceName; }
+   std::string const& PersistenceNamespace() const { return strPersistenceNamespace; }
+   fs::path const&    PathToPersistence() const { return pathToPersistence; }
+   std::string const& PersistenceServerType() const{ return strPersistenceServerType; };
+   std::string const& PersistenceDatabase() const { return strPersistenceDatabase; }
+
+   std::string        FullPersistenceClass() const { return (PersistenceNamespace().size() > 0 ? PersistenceNamespace() + "::"s : ""s) + PersistenceClass(); }
+
+
    /// \}
    
    /** \name manipulators for class TMyDictionary
@@ -557,6 +599,13 @@ public:
    std::string const& BaseClass(std::string const& newVal) { return strBaseClass = newVal; }
    std::string const& BaseNamespace(std::string const& newVal) { return strBaseNamespace = newVal; }
    fs::path const&    PathToBase(fs::path const& newVal) { return pathToBase = newVal; }
+
+   std::string const& PersistenceClass(std::string const& newVal) { return strPersistenceClass = newVal; }
+   std::string const& PersistenceName(std::string const& newVal) { return  strPersistenceName = newVal; }
+   std::string const& PersistenceNamespace(std::string const& newVal) { return strPersistenceNamespace = newVal; }
+   fs::path    const& PathToPersistence(fs::path const& newVal) { return pathToPersistence = newVal; }
+   std::string const& PersistenceServerType(std::string const& newVal) { return strPersistenceServerType = newVal; };
+   std::string const& PersistenceDatabase(std::string const& newVal) { return  strPersistenceDatabase = newVal; }
 
    /// \}
 
@@ -599,11 +648,18 @@ public:
    void Create_Doxygen(std::ostream&) const;
    void Create_Doxygen_SQL(std::ostream&) const;
 
-   void Create_SQL_Documentation(std::ostream&) const;
+   bool Create_SQL_Documentation(std::ostream&) const;
 
    bool SQL_Drop_Tables(std::ostream& os) const;
 
    bool CreateBaseHeader(std::ostream& out = std::cout) const;
+
+   bool CreateSQLStatementHeader(std::ostream& out = std::cout) const;
+   bool CreateSQLStatementSource(std::ostream& out = std::cout) const;
+   bool CreateReaderHeader(std::ostream& out = std::cout) const;
+   bool CreateReaderSource(std::ostream& out = std::cout) const;
+
+
    void Create_All(std::ostream& out = std::cout, std::ostream& err = std::cerr) const;
 
    void Test() const;

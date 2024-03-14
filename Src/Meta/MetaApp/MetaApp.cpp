@@ -43,10 +43,18 @@ int main() {
    TDictionary_Test dict_data;
   
    /// defining the paths for the output during metadata processing
-
+   /*
    dict_data.Dictionary().SourcePath("D:\\Test\\Persons\\Src");
    dict_data.Dictionary().SQLPath("D:\\Test\\Persons\\SQL");
-   dict_data.Dictionary().DocPath("D:\\Test\\Persons\\Documentation");
+   */
+
+
+   dict_data.Dictionary().SourcePath("D:\\Projekte\\GitHub\\Test_Metadata_Creator\\src");
+   dict_data.Dictionary().SQLPath("D:\\Projekte\\GitHub\\Test_Metadata_Creator\\SQL");
+
+   dict_data.Dictionary().PathToPersistence("Persistence");
+   dict_data.Dictionary().DocPath("D:\\Projekte\\GitHub\\Test_Metadata_Creator\\Documentation");
+
 
    try {
       if(false) {

@@ -25,6 +25,7 @@
 #include <iomanip>
 #include <tuple>
 #include <set>
+#include <functional>
 #include <algorithm>
 #include <exception>
 #include <filesystem>
@@ -32,10 +33,69 @@
 #include <ranges>
 #include <regex>
 #include <cctype>
+#include <locale>
+
+#include <windows.h>
+
 
 namespace fs = std::filesystem;
 using namespace std::string_literals;
 
+// convert an ANSI file to UTF-8 + BOM (this method is Windows-specific and must be adapted for other platforms)
+void convertToUTF8WithBOM(fs::path const& filePath) {
+   std::ifstream inputFile(filePath);
+   if (!inputFile.is_open()) {
+      throw std::runtime_error("Error when opening the input file \""s + filePath.string() + "\"."s);
+      }
+
+   std::string tmpFile = filePath.string() + ".tmp";
+   std::ofstream outputFile(tmpFile);
+   if (!outputFile.is_open()) {
+      throw std::runtime_error("Error when opening the output file \""s + tmpFile + "\"."s);
+      }
+
+   // write BOM (Byte Order Mark) for UTF-8 in the output file
+   outputFile.put(static_cast<char>(0xEF));
+   outputFile.put(static_cast<char>(0xBB));
+   outputFile.put(static_cast<char>(0xBF));
+
+   // perform conversion line by line
+   std::string line;
+   while (std::getline(inputFile, line)) {
+      // convert a ANSI to a UTF-8 using windows specific function MultiByteToWideChar and write this directly to the output file
+      int utf8_length = ::MultiByteToWideChar(CP_ACP, 0, line.c_str(), -1, NULL, 0);  
+      if (utf8_length == 0) {  // must be > 0 for an empty line too because its contain '\0'
+         throw std::runtime_error("error when determining the UTF-8 length in \""s + line + "\"."s);
+         }
+
+      std::wstring utf16_string(utf8_length, L'\0');
+      if (!::MultiByteToWideChar(CP_ACP, 0, line.c_str(), -1, &utf16_string[0], utf8_length)) {
+         throw std::runtime_error("error when converting from ANSI to UTF-16 in \""s + line + "\"."s);
+         }
+
+      int utf8_buffer_size = ::WideCharToMultiByte(CP_UTF8, 0, utf16_string.c_str(), -1, NULL, 0, NULL, NULL);
+      if (utf8_buffer_size == 0) {
+         throw std::runtime_error("error when determining the UTF - 8 buffer size in \""s + line + "\"."s);
+         }
+
+      std::string utf8_string(utf8_buffer_size - 1, '\0'); // -1, to ignore the NULL character at the end
+      if (!::WideCharToMultiByte(CP_UTF8, 0, utf16_string.c_str(), -1, &utf8_string[0], utf8_buffer_size, NULL, NULL)) {
+         throw std::runtime_error("Error when converting from UTF-16 to UTF-8 in \""s + line + "\"."s);
+         }
+
+      outputFile << utf8_string << "\n";
+      }
+
+   // close files before deleting and renaming
+   inputFile.close();
+   outputFile.close();
+
+   // delete original file and rename temporary file
+   fs::remove(filePath);
+   fs::rename(tmpFile, filePath);
+   }
+
+// ---------------------------------------------------------------------------------------------------------------------------
 // TMyAttribute
 
 /*
@@ -138,6 +198,17 @@ std::string TMyIndices::SQLRow() const {
    }
 
 // TMyTable
+
+std::string TMyTable::EntityTypeTxt() const {
+   switch (EntityType()) {
+      case EMyEntityType::table:        return "Entity"; 
+      case EMyEntityType::range:        return "Domain"; 
+      case EMyEntityType::relationship: return "Relationship";
+      case EMyEntityType::view:         return "View"; 
+      default:                          return "unknown";
+      }
+   }
+
 
 std::set<std::string> TMyTable::GetPrecursors(bool boAll) const {
    std::set<std::string> retval ;
@@ -454,6 +525,15 @@ void TMyDictionary::CreateClass(std::string const& strTable, std::ostream& out) 
 
 
 void  TMyDictionary::Create_All(std::ostream& out, std::ostream& err) const {
+   using job_type = std::pair<std::string, std::function<bool(std::ostream&)>>;
+   static std::vector<job_type> jobs = {
+      job_type { "create_tables.sql"s,      std::bind(&TMyDictionary::Create_SQL_Tables, this, std::placeholders::_1) },
+      job_type { "create_additinals.sql"s,  std::bind(&TMyDictionary::Create_SQL_Additionals, this, std::placeholders::_1) },
+      job_type { "create_rangevalues.sql"s, std::bind(&TMyDictionary::Create_SQL_RangeValues, this, std::placeholders::_1) },
+      job_type { "drop_all.sql"s,           std::bind(&TMyDictionary::SQL_Drop_Tables, this, std::placeholders::_1) },
+      job_type { "add_documentation.sql"s,  std::bind(&TMyDictionary::Create_SQL_Documentation, this, std::placeholders::_1) }
+    
+      };
    try {
       out << "Dictionary:  " << Name() << '\n'
           << "Identifier:  " << Identifier() << '\n'
@@ -462,7 +542,7 @@ void  TMyDictionary::Create_All(std::ostream& out, std::ostream& err) const {
           << "Author:      " << Author() << '\n'
           << "Date:        " << CurrentTimeStamp() << '\n';
       if (Copyright().size() > 0) {
-         out << "Copyright © " << Copyright() << '\n';
+         out << "Copyright (c) " << Copyright() << '\n';
 
          if (License().size() > 0) out << License() << '\n';
          }
@@ -473,25 +553,45 @@ void  TMyDictionary::Create_All(std::ostream& out, std::ostream& err) const {
       fs::create_directories(sqlPath);
       out << "create sql files in directory: " << sqlPath.string() << '\n';
 
-      std::ofstream of_sql(sqlPath / "create_tables.sql");
+      for(auto const& job : jobs) {
+         auto fileName = sqlPath / job.first;
+         std::ofstream of_sql(fileName);
+         job.second(of_sql);
+         of_sql.close();
+         convertToUTF8WithBOM(fileName);
+         }
+
+      /*
+      auto fileName = sqlPath / "create_tables.sql";
+      std::ofstream of_sql(fileName);
       Create_SQL_Tables(of_sql);
       of_sql.close();
+      convertToUTF8WithBOM(fileName);
 
-      of_sql.open(sqlPath / "create_additinals.sql");
+      fileName = sqlPath / "create_additinals.sql";
+      of_sql.open(fileName);
       Create_SQL_Additionals(of_sql);
       of_sql.close();
+      convertToUTF8WithBOM(fileName);
 
-      of_sql.open(sqlPath / "create_rangevalues.sql");
+      fileName = sqlPath / "create_rangevalues.sql";
+      of_sql.open(fileName);
       Create_SQL_RangeValues(of_sql);
       of_sql.close();
+      convertToUTF8WithBOM(fileName);
 
-      of_sql.open(sqlPath / "drop_all.sql");
+      fileName = sqlPath / "drop_all.sql"s
+      of_sql.open(fileName);
       SQL_Drop_Tables(of_sql);
       of_sql.close();
-
-      of_sql.open(sqlPath / "add_documentation.sql");
+      convertToUTF8WithBOM(fileName);
+      
+      fileName = sqlPath / "add_documentation.sql";
+      of_sql.open(fileName);
       Create_SQL_Documentation(of_sql);
       of_sql.close();
+      convertToUTF8WithBOM(fileName);
+      */
 
       // create the general documentation page with all informations
       fs::path doxPath = DocPath();
@@ -502,10 +602,11 @@ void  TMyDictionary::Create_All(std::ostream& out, std::ostream& err) const {
       of_dox.close();
 
       fs::create_directories(doxPath / "sql");
-      of_dox.open(doxPath / "sql" / (Identifier() + "_sql.dox"s));
+      auto fileName = doxPath / "sql" / (Identifier() + "_sql.dox"s);
+      of_dox.open(fileName);
       Create_Doxygen_SQL(of_dox);
       of_dox.close();
-
+      convertToUTF8WithBOM(fileName);
 
 
       fs::create_directories(SourcePath());
@@ -518,28 +619,75 @@ void  TMyDictionary::Create_All(std::ostream& out, std::ostream& err) const {
          auto srcPath = SourcePath() / PathToBase();
          fs::create_directories(srcPath.parent_path());
          std::ofstream of_base(srcPath);
-         if(of_base) CreateBaseHeader(of_base);
+         if(of_base) {
+            CreateBaseHeader(of_base);
+            of_base.close();
+            convertToUTF8WithBOM(srcPath);
+            }
          }
-
-
+ 
       // ---- create header and source files for tables -------------------
       for (auto const& [name, table] : Tables()) {
          auto srcPath = SourcePath() / table.SrcPath();
          fs::create_directories(srcPath);
          out << "files for table " << name << " ... ";
-         std::ofstream of_src(srcPath / (name + ".h"s));
+         auto fileName = srcPath / (name + ".h"s);
+         std::ofstream of_src(fileName);
          table.CreateHeader(of_src);
          of_src.close();
+         convertToUTF8WithBOM(fileName);
 
-         of_src.open(srcPath / (name + ".cpp"s));
+         fileName = srcPath / (name + ".cpp"s);
+         of_src.open(fileName);
          table.CreateSource(of_src);
+         of_src.close();
+         convertToUTF8WithBOM(fileName);
 
          auto doxPath = DocPath() / table.SrcPath();
          fs::create_directories(doxPath);
-         std::ofstream of_dox(doxPath / (name + ".dox"s));
+         fileName = doxPath / (name + ".dox"s);
+         std::ofstream of_dox(fileName);
          table.CreateDox(of_dox);
-
+         of_dox.close();
+         convertToUTF8WithBOM(fileName);
          out << "done.\n";
+         }
+
+      // ------- generate code for the persistence layer -------------------------
+      //  only when a class name for the persistence layer defined before
+      // -------------------------------------------------------------------------
+      if(HasPersistenceClass()) {
+         auto PathToPers = [this]() {
+            if (PathToPersistence().root_path() == fs::path()) return SourcePath() / PathToPersistence();
+            else return PathToPersistence();
+            }();
+         // create directories to the folder with the persistence layer files
+         fs::create_directories(PathToPers);
+         out << "\ncreate reader files in directory: " << PathToPers.string() << '\n';
+
+         auto fileName = PathToPers / (PersistenceName() + "_sql.h"s);
+         std::ofstream of_db(fileName);
+         if (of_db) CreateSQLStatementHeader(of_db);
+         of_db.close();
+         convertToUTF8WithBOM(fileName);
+
+         fileName = PathToPers / (PersistenceName() + "_sql.cpp"s);
+         of_db.open(fileName);
+         if (of_db) CreateSQLStatementSource(of_db);
+         of_db.close();
+         convertToUTF8WithBOM(fileName);
+
+         fileName = PathToPers / (PersistenceName() + ".h"s);
+         of_db.open(fileName);
+         if (of_db) CreateReaderHeader(of_db);
+         of_db.close();
+         convertToUTF8WithBOM(fileName);
+
+         fileName = PathToPers / (PersistenceName() + ".cpp"s);
+         of_db.open(fileName);
+         if (of_db) CreateReaderSource(of_db);
+         of_db.close();
+         convertToUTF8WithBOM(fileName);
          }
       }
    catch(std::exception& ex) {

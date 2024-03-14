@@ -283,7 +283,7 @@ EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Dies ist eine 
 
 */
  
-void TMyDictionary::Create_SQL_Documentation(std::ostream& os) const {
+bool TMyDictionary::Create_SQL_Documentation(std::ostream& os) const {
    static auto constexpr Clean = [](std::string const& strValue) {
       std::string strRetVal = "";
       std::ranges::copy_if(strValue, std::back_inserter(strRetVal), [](char letter) { return letter != '\''; });
@@ -342,7 +342,7 @@ void TMyDictionary::Create_SQL_Documentation(std::ostream& os) const {
 
       }
 
-
+   return true;
    }
 
 bool TMyDictionary::Create_SQL_Tables(std::ostream& os) const {
