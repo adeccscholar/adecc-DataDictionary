@@ -2,8 +2,80 @@
 
 #include <sstream>
 
+/*
+*
+* doxygen - w latex headerFile footerFile styleSheetFile
+*
+* example for a landscape document
+*    \documentclass{article}
+*    \usepackage[a4paper,margin=1in,landscape]{geometry}
+*    \usepackage{blindtext}
+*    \usepackage{tikz}
+*    \usetikzlibrary{calc}
+*    \begin{document}
+*    \begin{tikzpicture}[remember picture,overlay]
+*       \node at ($(current page.north east) + (-1cm,-1cm)$) {NE};
+*    \end{tikzpicture}
+*    \blinddocument
+*    \end{document}
+*/
+
 TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
    std::ostringstream os1, os2;
+
+   dictionary.Denotation("model with a simple person administration");
+   dictionary.Description(os1.str());
+   dictionary.Comment(os2.str());
+
+   os1 << "Model for a simple management of personal data for testing and presenting the use of "
+      << "metadata with a generator and for discussing the possibilities of using metadata.\n"
+      << "The model is implemented using the adecc Scholar metadata class TMyDictionary and "
+      << "the associated classes TMyDatatype, TMyAttribute, TMyTable, TMyReferences and TMyIndices.\n"
+
+      << "In addition to the necessary C++ source code for the classes of the system layer, this generator "
+      << "also creates scripts for creating the database with conditions and value tables and the basis for "
+      << "detailed documentation with Doxygen in separate files. In addition, methods are created that enable "
+      << "access using the database interface of the adeccDatabase library developed in this stream.\n"
+
+      << "The advantage of using generators that work on the basis of metadata is not only the enormous time saving, "
+      << "but also the correctness. This means that all parts are up-to-date and 100% aligned with each other.\n"
+
+      << "The basis for this model was taken from a training project by adecc Systemhaus GmbH and expanded once again.\n"
+      << "The following image show a draft paper / scratch pad of the background for this trainings project.\n"
+      << "\\image html Kladde.jpg\n"
+      << "\\image latex Kladde.jpg\n"
+
+      << "The following model diagram is created with the Embarcader E/R Studio and show the initial model from the former project.\n"
+
+      << "\\image html ER-Model.jpg<br>"
+      << "\\image latex ERModelLS.tif\n";
+
+   os1 << "This model was created to show and discuss the potential of metadata and the generation "
+      << "of source code, database scripts and documentation.\n"
+      << "In the model, in addition to the is - a relationship between the Person and Employee tables, "
+      << "there is a part - of relationship to employee working hours and an association to the departments "
+      << "in which employees work.\n"
+      << "In addition, there are a number of extended value tables to show that these do not only have to "
+      << "consist of an ID and name, but can also contain other data.\n"
+      << "The project, including all additional files and documentations, are part of the source code of the "
+      << "\"adecc Scholar\" project. The purpose of this project is to impart know-how on architecture and "
+      << "technology when using the programming language C++. The MIT license applies unless otherwise stated "
+      << "or other licenses must be used due to legal requirements.";
+
+   os2 << "There are many discussions about programming guidelines, names of identifiers, the pros and cons of "
+      << "notations (Hungarian notation, all lowercase, first letter uppercase, ...). These discussions also "
+      << "fade against the background of programming with metadata and can easily be adapted to any standard "
+      << "without any significant effort.\n"
+      << "Finally, please note that these sources are only training materials and explicitly not productive "
+      << "sources. You can use them according to the license in your own application, but there is no claim "
+      << "to correctness or any form of warranty.";
+
+
+
+   dictionary.Version("1.0");
+   dictionary.Author("Volker Hillmann (adecc Scholar)");
+   dictionary.Copyright("adecc Systemhaus GmbH 2024, All rights reserved.");
+   dictionary.License("This project is released under the MIT License.");
 
    dictionary.BaseClass("TSimplePersonBase");
    dictionary.BaseNamespace("myCorporate");
@@ -14,80 +86,6 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
    dictionary.PersistenceNamespace("reader");
    dictionary.PersistenceServerType("TMyMSSQL");
    dictionary.PersistenceDatabase("Test_Personen");
-
-   os1 << "Model for a simple management of personal data for testing and presenting the use of "
-       << "metadata with a generator and for discussing the possibilities of using metadata.\n"
-       << "The model is implemented using the adecc Scholar metadata class TMyDictionary and "
-       << "the associated classes TMyDatatype, TMyAttribute, TMyTable, TMyReferences and TMyIndices.\n"
-      
-       << "In addition to the necessary C++ source code for the classes of the system layer, this generator "
-       << "also creates scripts for creating the database with conditions and value tables and the basis for "
-       << "detailed documentation with Doxygen in separate files. In addition, methods are created that enable "
-       << "access using the database interface of the adeccDatabase library developed in this stream.\n"
-
-       << "The advantage of using generators that work on the basis of metadata is not only the enormous time saving, "
-       << "but also the correctness. This means that all parts are up-to-date and 100% aligned with each other.\n"
-
-       << "The basis for this model was taken from a training project by adecc Systemhaus GmbH and expanded once again.\n"
-       << "The following image show a draft paper / scratch pad of the background for this trainings project.\n"
-       << "\\image html Kladde.jpg\n"
-       << "\\image latex Kladde.jpg\n"
-
-       << "The following model diagram is created with the Embarcader E/R Studio and show the initial model from the former project.\n"
-
-       << "\\image html ER-Model.jpg\n"
-       << "\\image latex ERModelLS.tif\n";
- 
-   os1 << "This model was created to show and discuss the potential of metadata and the generation "
-       << "of source code, database scripts and documentation.\n"
-       << "In the model, in addition to the is - a relationship between the Person and Employee tables, "
-       << "there is a part - of relationship to employee working hours and an association to the departments "
-       << "in which employees work.\n"
-       << "In addition, there are a number of extended value tables to show that these do not only have to "
-       << "consist of an ID and name, but can also contain other data.\n"
-       << "The project, including all additional files and documentations, are part of the source code of the "
-       << "\"adecc Scholar\" project. The purpose of this project is to impart know-how on architecture and "
-       << "technology when using the programming language C++. The MIT license applies unless otherwise stated "
-       << "or other licenses must be used due to legal requirements.";
-
-   os2 << "There are many discussions about programming guidelines, names of identifiers, the pros and cons of "
-       << "notations (Hungarian notation, all lowercase, first letter uppercase, ...). These discussions also "
-       << "fade against the background of programming with metadata and can easily be adapted to any standard "
-       << "without any significant effort.\n" 
-       << "Finally, please note that these sources are only training materials and explicitly not productive "
-       << "sources. You can use them according to the license in your own application, but there is no claim "
-       << "to correctness or any form of warranty.";   
-
-   
-
-   /*
-   * 
-   * doxygen - w latex headerFile footerFile styleSheetFile
-   * 
-   * example for a landscape document
-   *    \documentclass{article}
-   *    \usepackage[a4paper,margin=1in,landscape]{geometry}
-   *    \usepackage{blindtext}
-   *    \usepackage{tikz}
-   *    \usetikzlibrary{calc}
-   *    \begin{document}
-   *    \begin{tikzpicture}[remember picture,overlay]
-   *       \node at ($(current page.north east) + (-1cm,-1cm)$) {NE};
-   *    \end{tikzpicture}
-   *    \blinddocument
-   *    \end{document}
-   */
-
-
-   dictionary.Denotation("model with a simple person administration");
-   dictionary.Description(os1.str());
-   dictionary.Comment(os2.str());
-
-
-   dictionary.Version("1.0");
-   dictionary.Author("Volker Hillmann (adecc Scholar)");
-   dictionary.Copyright("adecc Systemhaus GmbH 2024, All rights reserved.");
-   dictionary.License("This project is released under the MIT License.");
 
    dictionary.AddDataType("bigint", "BIGINT", false, false, "", "long long", "", "i", false, "BIGINT is largest integer data type for SQL Server . It uses 8 bytes of storage.");
    dictionary.AddDataType("bool", "TINYINT", false, false, "IN (0, 1)", "bool", "", "bo", false, "boolean (true = 1, false = 2) in source will transformed to TINYINT. This is the smallest integer data type and only uses 1 byte of storage. this data type is an integer value from 0 to 255.");
@@ -120,6 +118,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
    dictionary.AddDirectory(".", "root folder for the source of the project.",
                            "This folder contain all parts of the applications and libs for the project.");
+
    dictionary.AddDirectory("System", "subfolder with header and source files of the system layer for the project.",
                            "This folder contains all header and source files for the system layer of the application.\n"
                            "Its possible that you will find Subfolder for different namespaces here.");
@@ -236,7 +235,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(5, "Officer", "Officer", "integer", 0, 0, false, false, "", "", "", "person responsible / head of this department (association with the employys entity)")
       .AddAttribute(6, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "free notes to record information that is not used in the program")
 
-      .AddReference("refDepartments2Employee", EMyReferenceType::assoziation, "Employees", "responsible", "1 : n", { 9 }, "assoziation between the department to employee who is the responsible officer for this", { {5,1} })
+      .AddReference("refDepartments2Employee", EMyReferenceType::assoziation, "Employees", "responsible", "n : 1", { 9 }, "assoziation between the department to employee who is the responsible officer for this", { {5,2} })
 
       .AddIndex("uk_Departments_Denotation", EMyIndexType::key, "unique / representative denotation forthe department as key canditate for this entity", { { 2, true } })
       .AddIndex("idx_Departments_Abbr", EMyIndexType::undefined, "search pass for abbreviations of departments", { { 3, true } })
@@ -244,32 +243,33 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       ;
 
    dictionary.AddTable("Employees", EMyEntityType::table, "Employees", "dbo", "Employees", "myHR", "System\\HR", "SQL", "information about the employees in the company (generalization of a person)")
-      .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "attribute as foreign key from an attribute ID of a person entity to which these account details belong")
-      .AddAttribute(2, "PersonNumber", "PersonNumber", "varchar", 15, 0, true, false, "", "", "", "unique HR number of the employee in the company, assigned by the HR department")
-      .AddAttribute(3, "Salary", "Salary", "decimal", 10, 2, false, false, ">= 0.0", "", "", "salary / income that the employee currently receives, dependant by the SalaryBase")
-      .AddAttribute(4, "SalaryType", "SalaryType", "integer", 0, 0, false, false, "", "", "", "range for SalaryType with the kind of Salary and determine the SalaryBase for the calculation")
-      .AddAttribute(5, "TaxClass", "TaxClass", "integer", 0, 0, true, false, "", "", "", "Tax class currently held by the employee")
-      .AddAttribute(6, "StartOfJob", "StartOfJob", "date", 0, 0, true, false, "", "", "", "starting date of the employee in the company (can be extended later for the start of the current position)")
-      .AddAttribute(7, "EndOfJob", "EndOfJob", "date", 0, 0, false, false, "[EndOfJob IS NULL OR (EndOfJob > StartOfJob)]", "", "", "end date of the employee in the company, all dates without time history")
-      .AddAttribute(8, "ReasonDeparture", "ReasonDeparture", "integer", 0, 0, false, false, "[(ReasonDeparture IS NULL AND EndOfJob IS NULL) OR  (ReasonDeparture IS NOT NULL AND EndOfJob IS NOT NULL)]", "", "", "reason of departture when the person separated and the emplyment finished (NULL if active)")
-      .AddAttribute(9, "JobPosition", "JobPosition", "integer", 0, 0, false, false, "", "", "", "current position / activity of the employee within the company")
-      .AddAttribute(10, "JobSpec", "JobSpec", "varchar", 100, 0, false, false, "", "", "", "specification of the job as free text to concretize this")
-      .AddAttribute(11, "VacationDays", "VacationDays", "unsigned", 0, 0, false, false, "", "", "", "Entitlement to annual vacations for this employee")
-      .AddAttribute(12, "Department", "Department", "integer", 0, 0, true, false, "", "", "", "id of the department where the employee currently work")
-      .AddAttribute(13, "SocialNummer", "SocialNummer", "varchar", 20, 0, true, false, "", "", "", "social insurance number of the employee")
-      .AddAttribute(14, "Active", "Active", "bool", 0, 0, false, false, "", "", "[IIF(EndOfJob IS NULL OR EndOfJob >= GETDATE(), 1, 0)]", "calculated boolean value indicating whether the person is active in the company")
+      .AddAttribute(1, "Dummy", "Dummy", "integer", 0, 0, false, false, "", "", "", "dummy field to test the generator")
+      .AddAttribute(2, "EmployeeID", "EmployeeID", "integer", 0, 0, true, true, "", "", "", "attribute as foreign key from an attribute ID of a person entity to which these account details belong")
+      .AddAttribute(3, "PersonNumber", "PersonNumber", "varchar", 15, 0, true, false, "", "", "", "unique HR number of the employee in the company, assigned by the HR department")
+      .AddAttribute(4, "Salary", "Salary", "decimal", 10, 2, false, false, ">= 0.0", "", "", "salary / income that the employee currently receives, dependant by the SalaryBase")
+      .AddAttribute(5, "SalaryType", "SalaryType", "integer", 0, 0, false, false, "", "", "", "range for SalaryType with the kind of Salary and determine the SalaryBase for the calculation")
+      .AddAttribute(6, "TaxClass", "TaxClass", "integer", 0, 0, true, false, "", "", "", "Tax class currently held by the employee")
+      .AddAttribute(7, "StartOfJob", "StartOfJob", "date", 0, 0, true, false, "", "", "", "starting date of the employee in the company (can be extended later for the start of the current position)")
+      .AddAttribute(8, "EndOfJob", "EndOfJob", "date", 0, 0, false, false, "[EndOfJob IS NULL OR (EndOfJob > StartOfJob)]", "", "", "end date of the employee in the company, all dates without time history")
+      .AddAttribute(9, "ReasonDeparture", "ReasonDeparture", "integer", 0, 0, false, false, "[(ReasonDeparture IS NULL AND EndOfJob IS NULL) OR  (ReasonDeparture IS NOT NULL AND EndOfJob IS NOT NULL)]", "", "", "reason of departture when the person separated and the emplyment finished (NULL if active)")
+      .AddAttribute(10, "JobPosition", "JobPosition", "integer", 0, 0, false, false, "", "", "", "current position / activity of the employee within the company")
+      .AddAttribute(11, "JobSpec", "JobSpec", "varchar", 100, 0, false, false, "", "", "", "specification of the job as free text to concretize this")
+      .AddAttribute(12, "VacationDays", "VacationDays", "unsigned", 0, 0, false, false, "", "", "", "Entitlement to annual vacations for this employee")
+      .AddAttribute(13, "Department", "Department", "integer", 0, 0, true, false, "", "", "", "id of the department where the employee currently work")
+      .AddAttribute(14, "SocialNummer", "SocialNummer", "varchar", 20, 0, true, false, "", "", "", "social insurance number of the employee")
+      .AddAttribute(15, "Active", "Active", "bool", 0, 0, false, false, "", "", "[IIF(EndOfJob IS NULL OR EndOfJob >= GETDATE(), 1, 0)]", "calculated boolean value indicating whether the person is active in the company")
 
-      .AddReference("refEmployees2Person", EMyReferenceType::generalization, "Person", "is-a", "1 : 1", { 9 }, "generalization from an employee to a person (is-a relationship)", { {1,1} })
-      .AddReference("refEmployees2SalaryType", EMyReferenceType::range, "SalaryType", "has values", "1 : n", { 2 }, "range values as domain for the attribute SalaryBase", { {4,1} })
-      .AddReference("refEmployees2TaxClass", EMyReferenceType::range, "TaxClasses", "has values", "1 : n", { 2 }, "range value as domain for the attribute TaxClass", { {5,1} })
-      .AddReference("refEmployees2ReasonDeparture", EMyReferenceType::range, "ReasonDeparture", "separation because", "n : 1", { 2 }, "range value as domain for the reason for departure of the employee", { {8,1} })
-      .AddReference("refEmployees2JobPositions", EMyReferenceType::range, "JobPositions", "holds", "1 : n", { 2 }, "range value as domain for this attribute, possible jobpositions in company", { {9,1} })
-      .AddReference("refEmployees2Department", EMyReferenceType::assoziation, "Departments", "works in", "1 : n", { 2 }, "assoziations between an employee to the department where she/he work", { {12,1} })
+      .AddReference("refEmployees2Person", EMyReferenceType::generalization, "Person", "is-a", "1 : 1", { 9 }, "generalization from an employee to a person (is-a relationship)", { {2,1} })
+      .AddReference("refEmployees2SalaryType", EMyReferenceType::range, "SalaryType", "has values", "n : 1", { 2 }, "range values as domain for the attribute SalaryType (inside this SalaryBase)", { {5,1} })
+      .AddReference("refEmployees2TaxClass", EMyReferenceType::range, "TaxClasses", "has values", "n : 1", { 2 }, "range value as domain for the attribute TaxClass", { {6,1} })
+      .AddReference("refEmployees2ReasonDeparture", EMyReferenceType::range, "ReasonDeparture", "separation because", "n : 1", { 2 }, "range value as domain for the reason for departure of the employee", { {9,1} })
+      .AddReference("refEmployees2JobPositions", EMyReferenceType::range, "JobPositions", "holds", "n : 1", { 2 }, "range value as domain for this attribute, possible jobpositions in company", { {10,1} })
+      .AddReference("refEmployees2Department", EMyReferenceType::assoziation, "Departments", "works in", "n : 1", { 2 }, "assoziations between an employee to the department where she/he work", { {13,1} })
 
-      .AddIndex("uk_Employees_PersonNumber", EMyIndexType::key, "unique personal number of a employee in company (key canditate)", { { 2, true } })
-      .AddIndex("uk_Employees_SocialNumber", EMyIndexType::key, "extern unique number of an employee (key canditate)", { { 8, true } })
-      .AddIndex("idx_Employees_JobSpec", EMyIndexType::undefined, "access path to search for informations about job specifications", { { 6, true } })
-      .AddIndex("idx_Employees_Active", EMyIndexType::undefined, "access path to search / filter all active employees", { { 9, true } })
+      .AddIndex("uk_Employees_PersonNumber", EMyIndexType::key, "unique personal number of a employee in company (key canditate)", { { 3, true } })
+      .AddIndex("uk_Employees_SocialNumber", EMyIndexType::key, "extern unique number of an employee (key canditate)", { { 9, true } })
+      .AddIndex("idx_Employees_JobSpec", EMyIndexType::undefined, "access path to search for informations about job specifications", { { 7, true } })
+      .AddIndex("idx_Employees_Active", EMyIndexType::undefined, "access path to search / filter all active employees", { { 10, true } })
 
       ;
 
@@ -356,7 +356,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique description of an internet connection type entity in the domain, used in selections, comboboxes, … (key canditate)")
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "non-representative abbreviation that can be used for a short advertisement for this internet connection type")
       .AddAttribute(4, "Description", "Description", "text", 0, 0, false, false, "", "", "", "detailed description of these internet connection type,this is a self documentation, possible use as hint or to information in the programm")
-      .AddAttribute(5, "Prefix", "Prefix", "varchar", 10, 0, false, false, "", "", "", "")
+      .AddAttribute(5, "Prefix", "Prefix", "varchar", 10, 0, false, false, "", "", "", "protocoll prefix which is used for this internet type (smtp:, phone:, https_, ...)")
       .AddAttribute(6, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information for this type of internet connection, not used in application")
       .AddAttribute(7, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of internet connection type to a system value (cannot be changed as it is used directly by the program)")
 
@@ -379,7 +379,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(6, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information for this type of job position, not used in application")
       .AddAttribute(7, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of job position to a system value (cannot be changed as it is used directly by the program)")
 
-      .AddReference("refJobPosition2SalaryType", EMyReferenceType::range, "SalaryType", "is in this", "1 : n", { 2 }, "range value which descripe which kind of salary this JobPositions use", { {1,1} })
+      .AddReference("refJobPosition2SalaryType", EMyReferenceType::range, "SalaryType", "is in this", "n : 1", { 2 }, "range value which descripe which kind of salary this JobPositions use", { {5,1} })
 
       .AddIndex("uk_JobPositions_Denotation", EMyIndexType::key, "unique / representative denotation for this position in job", { { 2, true } })
 
@@ -477,7 +477,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique description / donation for this base of salary. The algorithm use the id , the text is for display or select")
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "unique abbreviation for this base of salary. The algorithm use the id , the text is for display or select")
       .AddAttribute(4, "Description", "Description", "text", 0, 0, false, false, "", "", "", "a longer description for this base to use as hint or for display")
-      .AddAttribute(5, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "")
+      .AddAttribute(5, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of salary base to a system value (cannot be changed as it is used directly by the program)")
 
       .AddIndex("uk_SalaryBase_Denotation", EMyIndexType::key, "unique / representative denotation for this base of salary", { { 2, true } })
       .AddIndex("uk_SalaryBase_Abbreviation", EMyIndexType::key, "unique / representative abbreviation for this base of salary", { { 3, true } })
@@ -490,13 +490,13 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       ;
 
-   dictionary.AddTable("SalaryType", EMyEntityType::range, "SalaryType", "dbo", "SalaryType", "myHR", "System\\HR", "SQL", "kind of salary as range value and base for calculations (flix, bonus, hourly, dayly, monthly, ...)")
-      .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "")
-      .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "")
-      .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "")
-      .AddAttribute(4, "Description", "Description", "text", 0, 0, false, false, "", "", "", "")
-      .AddAttribute(5, "SalaryBase", "SalaryBase", "integer", 0, 0, false, false, "", "", "", "")
-      .AddAttribute(6, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "")
+   dictionary.AddTable("SalaryType", EMyEntityType::range, "SalaryType", "dbo", "SalaryType", "myHR", "System/HR", "SQL", "kind of salary as range value and base for calculations (flix, bonus, hourly, dayly, monthly, ...)")
+      .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number / id of the type of salary")
+      .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique denotation for the type of salary")
+      .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "abbreviation for thetype of salary, used in the application for a compact display")
+      .AddAttribute(4, "Description", "Description", "text", 0, 0, false, false, "", "", "", "description as long text for the type of salary, used in the application for detailed informations")
+      .AddAttribute(5, "SalaryBase", "SalaryBase", "integer", 0, 0, false, false, "", "", "", "id of the salary base which is used for this type of salary (foreign key from SalaryBase)")
+      .AddAttribute(6, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of salary base to a system value (cannot be changed as it is used directly by the program)")
 
       .AddReference("refSalaryType2SalaryBase", EMyReferenceType::range, "SalaryBase", "has values", "1 : n", { 2 }, "range value for the salary base, used for different kinds of calculations", { {5,1} })
 
@@ -593,7 +593,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(4, "Reason", "Reason", "integer", 0, 0, true, false, "BETWEEN 0 AND 6", "", "", "reason of non working time, there exist a table, but values are interpreted through the applications")
       .AddAttribute(5, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "free notices to the non-working time")
 
-      .AddReference("refNonWorking2Employee", EMyReferenceType::composition, "Employees", "idled", "1 : n", { }, "part of relationship to idle times / times of non working", { {1,1} })
+      .AddReference("refNonWorking2Employee", EMyReferenceType::composition, "Employees", "idled", "1 : n", { }, "part of relationship to idle times / times of non working", { {1,2} })
       .AddReference("refNonWorking2Workday_Start", EMyReferenceType::assoziation, "WD_Workdays", "is at", "1 : n", { }, "assoziation between the non-working time and the working days for the begin", { {2,1} })
       .AddReference("refNonWorking2Workday_Finishing", EMyReferenceType::assoziation, "WD_Workdays", "is at", "1 : n", { }, "assoziation between the non-working time and the working days for the end", { {3,1} })
       .AddReference("refNonWorking2Reason", EMyReferenceType::range, "ReasonNonWorking", "has values", "1 : n", { 2 }, "range value who describe the reason for the idle time", { {4,1} })
@@ -659,7 +659,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(5, "ProcessedAt", "ProcessedAt", "datetime", 0, 0, false, false, "", "", "", "time at which this data record was settled and posted")
       .AddAttribute(6, "DayOfWork", "DayOfWork", "date", 0, 0, false, false, "", "", "{convert(date, StartingTime)}", "calculated day to the timepoint where work started")
 
-      .AddReference("refWorkTime2Employee", EMyReferenceType::composition, "Employees", "worked", "1 : n", { }, "part of relationship of work times to the employees", { {1,1} })
+      .AddReference("refWorkTime2Employee", EMyReferenceType::composition, "Employees", "worked", "1 : n", { }, "part of relationship of work times to the employees", { {1,2} })
       ;
 
 
@@ -686,5 +686,102 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
                       "In the second phase of the project, this class / table is to be extended so that relationships can be established with projects / "
                       "project parts and so that the working time can be related to project activities.")
       .AddComment("the relationship with the project tasks is similar as the relationship to the employee, but without existence dependency.");
+
+   // ---------------------------------------------------------------------------------------------------------------------------------------
+   // 2nd stage
+   // ---------------------------------------------------------------------------------------------------------------------------------------
+
+   dictionary.AddDirectory("System\\Sales", "subfolder with header and source files for the source files about customers and sales informations.",
+      "This folder contains all header and source files for the sales system layer with customer and sales informations.");
+
+   dictionary.AddNameSpace("mySales", "namespace with the classes that are developed for use in the department of sales.",
+      "This area contains the classes and data structures that are used in the sales and customer service area.\n"
+      "This area is under the responsibility of the Sales department");
+
+   dictionary.AddTable("Contacts", EMyEntityType::table, "Contacts", "dbo", "Contacts", "mySales", "System\\Sales", "SQL", "information to the data of a contact person at the customer  (inherited from Person)")
+      .AddAttribute(1, "ContactID", "ContactID", "integer", 0, 0, true, true, "", "", "", "internal id for this contact, attribute as foreign key from an attribute ID of a person entity ")
+      .AddAttribute(2, "CustID", "CustID", "integer", 0, 0, true, false, "", "", "", "Customer identification number of the contact associated customer.")
+      .AddAttribute(3, "CustLiaison", "CustLiaison", "integer", 0, 0, true, false, "", "", "", "liaision for this contact person as range value (from table CustLiasion)")
+
+      .AddReference("refContacts2Person", EMyReferenceType::generalization, "Person", "", "", { 9 }, "generalization of a contact to a person (is-a relationship)", { {1,1} })
+      .AddReference("refContacts2Customer", EMyReferenceType::composition, "Customers", "", "1 : n", { }, "part of relationship of the contact to a customer", { {2,1} })
+      .AddReference("refContacts2Liaison", EMyReferenceType::range, "CustLiaison", "has values", "n : 1", { 2 }, "range values as domain for the attribute CustLiaison", { {3,1} })
+
+      ;
+
+   dictionary.AddTable("CorporateForm", EMyEntityType::range, "CorporateForm", "dbo", "CorporateForm", "myCorporate", "System\\Corporate", "SQL", "This table stores information about various types of legal forms. Each row corresponds to a specific legal form with several informations.")
+      .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number / id for this enity of Legal Forms. Used as primary key and for relationships")
+      .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique denotation for this entity. denotes the name or designation of the legal form")
+      .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 15, 0, true, false, "", "", "", "abbreviated form of the legal form,  used in the application or reports for a compact display")
+      .AddAttribute(4, "Description", "Description", "text", 0, 0, false, false, "", "", "", "provides a detailed description of the legal form. long text of this entity, used in the application for detailed informations")
+      .AddAttribute(5, "IsLegalEntrity", "IsLegalEntrity", "bool", 0, 0, true, false, "", "", "", "indicates whether the legal form constitutes a legal entity (true/false)")
+      .AddAttribute(6, "UrgentValue", "UrgentValue", "integer", 0, 0, false, false, "", "", "", "indicates whether the legal form has urgent significance (true/false)")
+
+      .AddIndex("uk_CorporateForm_Donation", EMyIndexType::key, "unique / representative denotation for this corporate form", { { 2, true } })
+      .AddIndex("uk_CorporateForm_Abbreviation", EMyIndexType::key, "unique / representative abbreviation for this corporate form", { { 1, true } })
+
+      .AddRangeValue("INSERT INTO CorporateForm (ID, Denotation, Abbreviation, Description, IsLegalEntrity, UrgentValue) VALUES\n"
+                     "    (1, 'Gesellschaft mit beschränkter Haftung', 'GmbH', 'Eine GmbH ist eine Kapitalgesellschaft, bei der die Haftung der Gesellschafter auf ihre Einlagen beschränkt ist.', 1, 1), \n"
+                     "    (2, 'Aktiengesellschaft', 'AG', 'Eine AG ist eine Kapitalgesellschaft, deren Grundkapital in Aktien zerlegt ist und deren Eigentümer (Aktionäre) beschränkt haften.', 1, 1), \n"
+                     "    (3, 'Unternehmergesellschaft (haftungsbeschränkt)', 'UG', 'Eine UG ist eine haftungsbeschränkte Kapitalgesellschaft, die eine niedrigere Mindesteinlage erfordert als eine GmbH. Sie kann in eine GmbH umgewandelt werden.', 1, 1), \n"
+                     "    (4, 'Offene Handelsgesellschaft', 'OHG', 'Eine OHG ist eine Personengesellschaft, bei der alle Gesellschafter unbeschränkt und persönlich für die Verbindlichkeiten der Gesellschaft haften.', 1, 1), \n"
+                     "    (5, 'Kommanditgesellschaft', 'KG', 'Eine KG ist eine Personengesellschaft, bei der es neben den unbeschränkt haftenden Gesellschaftern (Komplementären) auch beschränkt haftende Gesellschafter gibt.', 1, 1), \n"
+                     "    (6, 'Einzelkaufmann', 'e.K.', 'Ein e.K. ist eine Einzelunternehmung, bei der der Unternehmer allein und unbeschränkt für alle Verbindlichkeiten haftet.', 0, 1), \n"
+                     "    (7, 'Ges. mit beschr. Haftung & Compagnie Kommanditges.', 'GmbH & Co. KG', 'Eine Gesellschaft mit beschränkter Haftung & Compagnie Kommanditgesellschaft ist eine Kommanditgesellschaft, bei der die Komplementärin eine GmbH ist. Dadurch kann eine GmbH als persönlich haftender Gesellschafter fungieren, während die übrigen Gesellschafter beschränkt haften.', 0, 1), \n"
+                     "    (8, 'Gesellschaft bürgerlichen Rechts', 'GbR', 'Eine GbR ist eine Personengesellschaft, bei der mindestens zwei natürliche oder juristische Personen gemeinsam ein bestimmtes Ziel verfolgen und gemeinsam handeln.', 0, 1)")
+
+      ;
+
+   dictionary.AddTable("CustClassification", EMyEntityType::range, "CustClassification", "dbo", "CustClassification", "mySales", "System\\Sales", "SQL", "domain / range with the classifications for customers")
+      .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number / id of this classification of a customer")
+      .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique denotation of this classification of a customer")
+      .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "abbreviation of this classification of a customer, used in the application for a compact display")
+      .AddAttribute(4, "Description", "Description", "text", 0, 0, false, false, "", "", "", "description as long text of this classification of a customer, used in the application for detailed informations")
+      .AddAttribute(5, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information of this classification of a customer, not used in the application")
+      .AddAttribute(6, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of this classification of a customer to a system value (cannot be changed as it is used directly by the program)")
+
+      .AddIndex("uk_CustClass_Donation", EMyIndexType::key, "unique / representative denotation for this customers classification", { { 2, true } })
+
+      .AddRangeValue("INSERT INTO CustClassification (ID, Denotation, Abbreviation, Description, UrgentValue) VALUES\n"
+                     "    (1, 'Neukunde', 'Neu', 'Ein Kunde, der gerade erst begonnen hat, Geschäfte mit dem Unternehmen zu tätigen und möglicherweise noch nicht viel Erfahrung mit den Produkten oder Dienstleistungen des Unternehmens hat.', 1), \n"
+                     "    (2, 'VIP-Kunde', 'VIP', 'Ein Kunde, der aufgrund seines langjährigen Engagements, seines hohen Umsatzes oder seiner anderen besonderen Merkmale einen VIP-Status im Unternehmen hat.', 1), \n"
+                     "    (3, 'Gelegenheitskunde', 'GK', 'Ein Kunde, der nur gelegentlich Geschäfte mit dem Unternehmen tätigt und keine regelmäßigen oder wiederkehrenden Käufe macht.', 1), \n"
+                     "    (4, 'Geschäftskunde', 'B2B', 'Ein Kunde, der ein anderes Unternehmen oder eine Organisation vertritt und Produkte oder Dienstleistungen für geschäftliche Zwecke erwirbt. Diese Kunden haben oft spezifische Anforderungen und erwarten eine professionelle Betreuung.', 1), \n"
+                     "    (5, 'Privatkunde', 'B2C', 'Ein Kunde, der als Einzelperson Produkte oder Dienstleistungen für den persönlichen Gebrauch erwirbt. Diese Kunden können eine Vielzahl von Bedürfnissen haben und erwarten oft eine persönliche und freundliche Betreuung.', 1)")
+      ;
+
+   dictionary.AddTable("CustLiaison", EMyEntityType::range, "CustLiaison", "dbo", "CustLiaison", "mySales", "System\\Sales", "SQL", "doman range with the liaisons to use a contact at a customer")
+      .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "unique identification number / id of this liaison to use a contact in a customer")
+      .AddAttribute(2, "Denotation", "Denotation", "varchar", 50, 0, true, false, "", "", "", "unique denotation of this liaison to use a contact in a customer")
+      .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, false, false, "", "", "", "abbreviation of this liaison to use a contact in a customer, used in the application for a compact display")
+      .AddAttribute(4, "Description", "Description", "text", 0, 0, false, false, "", "", "", "description as long text of this liaison to use a contact in a customer, used in the application for detailed informations")
+      .AddAttribute(5, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information of this  liaison to use a contact in a customer, not used in the application")
+      .AddAttribute(6, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of this liaison to use a contact in a customer to a system value (cannot be changed as it is used directly by the program)")
+
+      .AddIndex("uk_CustLiaison_Donation", EMyIndexType::key, "unique / representative denotation for this liaison for the contact", { { 2, true } })
+
+      .AddRangeValue("INSERT INTO CustLiaison (ID, Denotation, Abbreviation, Description, UrgentValue) VALUES\n"
+                     "    (1, 'Geschäftsführer/in', 'GV', 'Der Geschäftsführer ist die höchste Führungsperson des Kunden und vertritt das Unternehmen. Sie sind für die strategische Ausrichtung, das Management und die langfristige Entwicklung der Geschäftsbeziehung verantwortlich. Der Geschäftsführer trägt die Gesamtverantwortung für den Erfolg des Projekts.', 1), \n"
+                     "    (2, 'Projektmanager/in', 'Projekt', 'Der Projektleiter ist die zentrale Kontaktperson beim Kunden während eines Projekts. Sie sind verantwortlich für die Planung, Organisation und Überwachung des Projekts sowie für die Koordination aller internen und externen Aktivitäten.', 1), \n"
+                     "    (3, 'Technische/r Berater/in', 'Technik', 'Der technische Ansprechpartner ist eine Person beim Kunden, die als direkter Kontaktpunkt für technische Fragen, Unterstützung und Problemlösungen fungiert.', 1), \n"
+                     "    (4, 'Kaufmännische/r Berater/in', 'Finanzen', 'Der kaufmännische Ansprechpartner ist für alle kaufmännischen Belange beim Kunden zuständig. Er ist verantwortlich für die Verwaltung von Verträgen, Preisgestaltung, Budgetierung und anderen finanziellen Fragen.', 1), \n"
+                     "    (5, 'Vertragsmanager/in', 'Vertrag', 'Der Vertragsmanager ist für die Verwaltung und Überwachung aller vertraglichen Angelegenheiten beim Kunden verantwortlich. Sie sind dafür zuständig, Verträge zu erstellen, zu überprüfen und zu verhandeln, Änderungen zu koordinieren und sicherzustellen, dass alle Vertragsbedingungen eingehalten werden.', 1)")
+
+      ;
+
+   dictionary.AddTable("Customers", EMyEntityType::table, "Customers", "dbo", "Customers", "mySales", "System\\Sales", "SQL", "information to the data of a client / customer  (inherited from Person)")
+      .AddAttribute(1, "CustID", "CustID", "integer", 0, 0, true, true, "", "", "", "internal id for this client, attribute as foreign key from an attribute ID of a person entity ")
+      .AddAttribute(2, "ServiceAgent", "ServiceAgent", "integer", 0, 0, true, false, "", "", "", "employee is  responsible for this client (association with the employys entity)")
+      .AddAttribute(3, "CustClassification", "CustClassification", "integer", 0, 0, true, false, "", "", "", "classification of this customer as range value (from table CustClassification)")
+      .AddAttribute(4, "LegalForm", "LegalForm", "integer", 0, 0, true, false, "", "", "", "legal form of this customer")
+
+      .AddReference("refCustomers2Person", EMyReferenceType::generalization, "Person", "is-a", "1 : 1", { 9 }, "generalization from a custumer to a person (is-a relationship)", { {1,1} })
+      .AddReference("refCustomers2Classification", EMyReferenceType::range, "CustClassification", "has values", "n : 1", { 2 }, "range values as domain for the attribute CustClassification", { {3,1} })
+      .AddReference("refCustomers2Employees_SA", EMyReferenceType::assoziation, "Employees", "works in", "n : 1", { 2 }, "assoziations between an customer to the the employee who act as service agent", { {2,2} })
+      .AddReference("refCustomers2LegalForms", EMyReferenceType::range, "CorporateForm", "has values", "n : 1", { 3 }, "range values as domain for the attribute LegalForms", { {4,1} })
+
+      ;
+
+
 
    }

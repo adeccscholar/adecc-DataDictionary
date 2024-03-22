@@ -41,7 +41,8 @@
 namespace fs = std::filesystem;
 using namespace std::string_literals;
 
-// convert an ANSI file to UTF-8 + BOM (this method is Windows-specific and must be adapted for other platforms)
+/// \brief convert an ANSI file to UTF-8 + BOM (this method is Windows-specific and must be adapted for other platforms)
+/// \todo check error messages with system_error 
 void convertToUTF8WithBOM(fs::path const& filePath) {
    std::ifstream inputFile(filePath);
    if (!inputFile.is_open()) {
@@ -553,56 +554,26 @@ void  TMyDictionary::Create_All(std::ostream& out, std::ostream& err) const {
       fs::create_directories(sqlPath);
       out << "create sql files in directory: " << sqlPath.string() << '\n';
 
-      for(auto const& job : jobs) {
-         auto fileName = sqlPath / job.first;
+      for(auto const& [filename, funct] : jobs) {
+         auto fileName = sqlPath / filename;
          std::ofstream of_sql(fileName);
-         job.second(of_sql);
+         funct(of_sql);
          of_sql.close();
          convertToUTF8WithBOM(fileName);
          }
-
-      /*
-      auto fileName = sqlPath / "create_tables.sql";
-      std::ofstream of_sql(fileName);
-      Create_SQL_Tables(of_sql);
-      of_sql.close();
-      convertToUTF8WithBOM(fileName);
-
-      fileName = sqlPath / "create_additinals.sql";
-      of_sql.open(fileName);
-      Create_SQL_Additionals(of_sql);
-      of_sql.close();
-      convertToUTF8WithBOM(fileName);
-
-      fileName = sqlPath / "create_rangevalues.sql";
-      of_sql.open(fileName);
-      Create_SQL_RangeValues(of_sql);
-      of_sql.close();
-      convertToUTF8WithBOM(fileName);
-
-      fileName = sqlPath / "drop_all.sql"s
-      of_sql.open(fileName);
-      SQL_Drop_Tables(of_sql);
-      of_sql.close();
-      convertToUTF8WithBOM(fileName);
-      
-      fileName = sqlPath / "add_documentation.sql";
-      of_sql.open(fileName);
-      Create_SQL_Documentation(of_sql);
-      of_sql.close();
-      convertToUTF8WithBOM(fileName);
-      */
 
       // create the general documentation page with all informations
       fs::path doxPath = DocPath();
       fs::create_directories(doxPath);
       out << "create documentation files in directory: " << doxPath.string() << '\n';
-      std::ofstream of_dox(doxPath / (Identifier() + ".dox"s));
+      auto fileName = doxPath / (Identifier() + ".dox"s);
+      std::ofstream of_dox(fileName);
       Create_Doxygen(of_dox);
       of_dox.close();
+      convertToUTF8WithBOM(fileName);
 
       fs::create_directories(doxPath / "sql");
-      auto fileName = doxPath / "sql" / (Identifier() + "_sql.dox"s);
+      fileName = doxPath / "sql" / (Identifier() + "_sql.dox"s);
       of_dox.open(fileName);
       Create_Doxygen_SQL(of_dox);
       of_dox.close();

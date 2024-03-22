@@ -61,6 +61,8 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
       auto parents = GetParents(EMyReferenceType::generalization);
       auto part_of_data = GetPart_ofs(EMyReferenceType::composition);
 
+      auto inherited = GetPart_ofs(EMyReferenceType::generalization);
+
       // write header files for base classes
       if (!parents.empty()) {
          os << "\n// includes for required header files of base classes\n";
@@ -91,6 +93,8 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
          }
 
       os << "\n"
+         << "#include <iostream>\n"
+         << "#include <iomanip>\n" // possible std::format, but still is no need to force C++20
          << "#include <optional>\n"
          << "#include <stdexcept>\n"
          << "#include <map>\n"
@@ -142,6 +146,23 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
          if (Dictionary().PersistenceNamespace().size() > 0) os << "   }\n\n";
          }
 
+
+      if (!inherited.empty()) {
+         std::string strNamespace { ""s };
+         bool boNamespace { false };
+         for (auto const& [table, _1, _2, _3, _4] : inherited) {
+            if(table.Namespace() != strNamespace) {
+               if (table.Namespace() != Namespace()) {
+                  if(strNamespace.size() > 0) os << "   }\n\n"s;
+                  os << "namespace " << table.Namespace() << " {\n"s;
+                  strNamespace = table.Namespace();
+                  boNamespace = true;
+                  }
+               }
+            os << "   class " << table.ClassName() << ";\n";
+            }
+         if (strNamespace.size() > 0) os << "   }\n\n"s;
+         }
 
       // open the namespace when needed
       bool boHasNamespace = Namespace().size() > 0;
@@ -220,6 +241,8 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
          // ------------------------------------------------------------------------------------------
          os << my_indent(2) << "class primary_key {\n"
             << my_indent(3) <<    "friend class " << ClassName() << ";\n"
+            << my_indent(3) <<    "friend std::ostream& operator << (std::ostream& out, primary_key const& data) { "
+            << "return data.write(out); }\n" 
             << my_indent(3) <<    "private:\n";
          // member for the primary key attributes
          for (auto const& [attr, dtype] : prim_attr) {
@@ -229,62 +252,45 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
          os << "\n";
 
          // standard constructor for the primary_key type
-         os << std::format("{0}constexpr primary_key() : ", my_indent(4))
-            << std::get<1>(prim_attr[0]).Prefix() + std::get<0>(prim_attr[0]).Name() + " {}";
-         for (auto const& [attr, dtype] : prim_attr | std::views::drop(1)) {
-            os << std::format(", {} {{}}", dtype.Prefix() + attr.Name());
-            }
-         os << " { }\n";
+         os << std::format("{0}primary_key();\n", my_indent(4));
 
          os << my_indent(3) << "public:\n";
 
          // initialize constructor for the primary_key type
          std::string strAttr = std::get<1>(prim_attr[0]).Prefix() + std::get<0>(prim_attr[0]).Name();
-         os << std::format("{0}constexpr primary_key({1}{2} p{3}", my_indent(4), std::get<1>(prim_attr[0]).SourceType(),
-                                                                   (std::get<1>(prim_attr[0]).UseReference() ? " const&" : ""),
-                                                                    std::get<0>(prim_attr[0]).Name());
+         os << std::format("{0}{1}primary_key({2}{3} p{4}", my_indent(4),
+                                                         prim_attr.size() > 1 ? "" : "explicit ",
+                                                         std::get<1>(prim_attr[0]).SourceType(),
+                                                         (std::get<1>(prim_attr[0]).UseReference() ? " const&" : ""),
+                                                         std::get<0>(prim_attr[0]).Name());
          for (auto const& [attr, dtype] : prim_attr | std::views::drop(1)) 
             os << std::format(", {0}{1} p{2}", dtype.SourceType(), (dtype.UseReference() ? " const&" : ""), attr.Name());
-         os << ") : " << std::format("{0}(p{1})", strAttr, std::get<0>(prim_attr[0]).Name());
-         for (auto const& [attr, dtype] : prim_attr | std::views::drop(1)) {
-            std::string strAttr = dtype.Prefix() + attr.Name();
-            os << std::format(", {0}(p{1})", strAttr, attr.Name());
-            }
-         os << " { }\n";
+         os << ");\n";
 
          // constructor for the primary_key type with the incircling class
          // can't be constexpr because Manipulator can throw an exception
-         os << std::format("{0}primary_key({1} const& other) : {2}(other._{3}())", my_indent(4), ClassName(), strAttr, 
-                                                                                             std::get<0>(prim_attr[0]).Name());
-         for (auto const& [attr, dtype] : prim_attr | std::views::drop(1)) {
-            os << std::format(", {0}(other._{1}())", dtype.Prefix() + attr.Name(), attr.Name());
-            }
-         os << " { }\n";
-
+         os << std::format("{0}explicit primary_key({1} const& other);\n", my_indent(4), ClassName());
 
          // copy constructor for the primary_key type
-         os << std::format("{0}constexpr primary_key(primary_key const& other) : {1}(other.{1})", my_indent(4), strAttr);
-         for (auto const& [attr, dtype] : prim_attr | std::views::drop(1)) {
-            std::string strAttr = dtype.Prefix() + attr.Name();
-            os << std::format(", {0}(other.{0})", strAttr);
-         }
-         os << " { }\n";
+         os << std::format("{0}primary_key(primary_key const& other);\n", my_indent(4));
 
          // move constructor for the primary_key type
-         // strAttr initialized still from copy constructor
-         os << std::format("{0}constexpr primary_key(primary_key&& other) noexcept : {1}(std::move(other.{1}))", my_indent(4), strAttr);
-         for (auto const& [attr, dtype] : prim_attr | std::views::drop(1)) {
-            std::string strAttr = dtype.Prefix() + attr.Name();
-            os << std::format(", {0}(std::move(other.{0}))", strAttr);
-         }
-         os << " { }\n";
+         os << std::format("{0}primary_key(primary_key&& other) noexcept;\n", my_indent(4));
 
-         os << std::format("{}constexpr ~primary_key() {{ }}\n", my_indent(4));
+         // constructors for inherited classes
+         // can't be constexpr because Manipulator can throw an exception
+         // auto inherited = GetPart_ofs(EMyReferenceType::generalization);
+         if(!inherited.empty()) {
+            for(auto const& [table, type_name, var_name, key_val, key_pairs] : inherited) {
+               os << std::format("{0}primary_key({1} const& other);\n", my_indent(4), table.FullClassName());
+               }
+            }
+
+         os << std::format("{}~primary_key() {{ }}\n", my_indent(4));
 
          os << '\n'
             << my_indent(4) << "// conversions operator for this element to the encircling class\n"
-            << std::format("{0}operator {1}() const {{\n{2}{1} ret;\n{2}return ret.init(*this);\n{2}}}\n",
-                                                   my_indent(4), ClassName(), my_indent(5));
+            << std::format("{0}operator {1}() const;\n", my_indent(4), ClassName());
 
          os << '\n'
             << my_indent(4) << "// relational operators of the primary type class\n"
@@ -297,33 +303,28 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
 
          os << '\n'
             << my_indent(4) << "// selectors the primary type class\n";
-            for (auto const& [attr, dtype] : prim_attr) {
+         for (auto const& [attr, dtype] : prim_attr) {
             std::string strRetType = dtype.SourceType() + (dtype.UseReference() ? "const& "s : " ");
             std::string strAttribute = dtype.Prefix() + attr.Name();
             os << std::format("{0}{1:<{2}}{3}() const {{ return {4}; }}\n", my_indent(4), strRetType, maxLengthPrimType + 7, attr.Name(), strAttribute);
             }
          os << '\n'
             << my_indent(4) << "// manipulators the primary type class\n";
-            for (auto const& [attr, dtype] : prim_attr) {
+         for (auto const& [attr, dtype] : prim_attr) {
             std::string strRetType = dtype.SourceType() + (dtype.UseReference() ? "const& "s : " ");
             std::string strAttribute = dtype.Prefix() + attr.Name();
             os << std::format("{0}{1:<{2}}{3}({1}newVal) {{ return {4} = newVal; }}\n", my_indent(4), strRetType, maxLengthPrimType + 7, attr.Name(), strAttribute);
             }
          os << "\n";
 
+         os << my_indent(4) << "// method to write elements of the primary key type class to a stream\n"
+            << my_indent(4) << "std::ostream& write(std::ostream& out) const;\n"
+            << "\n";
+
          os << my_indent(3) << "private:\n";
 
-         os << my_indent(4) << "int _compare(primary_key const& other) const {\n"
-            << my_indent(5) <<    "static auto constexpr comp_help = [](auto const& lhs, auto const& rhs) -> int {\n"
-            << my_indent(6) <<       "return (lhs < rhs ? -1 : (lhs > rhs ? 1 : 0));\n"
-            << my_indent(6) <<       "};\n";
-
-         for (auto const& [attr, dtype] : prim_attr) {
-            os << std::format("{0}if(auto ret = comp_help(this->{1}, other.{1}); ret != 0) return ret;\n", my_indent(5), dtype.Prefix() + attr.Name());
-            }
-         os << my_indent(5) <<    "return 0;\n"
-            << my_indent(5) <<    "}\n";
-         os << my_indent(3) << "};\n\n";
+         os << my_indent(4) << "int _compare(primary_key const& other) const;\n"
+            << my_indent(3) << "};\n\n";
          }
       /*
       std::string strKeyGenerate;
@@ -419,6 +420,7 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
       os << std::format("{0}{1:}();\n", my_indent(2), ClassName())
          << std::format("{0}{1:}({1:} const&);\n", my_indent(2), ClassName())
          << std::format("{0}{1:}({1:} &&) noexcept;\n", my_indent(2), ClassName())
+         << std::format("{0}explicit {1:}(primary_key const&);\n", my_indent(2), ClassName())
          << std::format("{0}virtual ~{1:}();\n", my_indent(2), ClassName());
       os << "\n"; 
 
@@ -624,18 +626,171 @@ bool TMyTable::CreateSource(std::ostream& os, bool boInline) const {
          if (Dictionary().License().size() > 0)   os << "* " << Dictionary().License() << '\n';
          os << "*/\n\n";
 
-         os << std::format("#include {}\n\n", Include())
-            << "#include <typeinfo>\n\n";
+         os << std::format("#include {}\n\n", Include());
 
-
+         os << "#include <typeinfo>\n\n";
 
          bool boHasNamespace = Namespace().size() > 0;
+         auto prim_attr = processing_data | std::views::filter([](auto const& a) { return std::get<0>(a).Primary(); }) | std::ranges::to<std::vector>();
+         if (prim_attr.size() == 0) [[unlikely]]
+            throw std::runtime_error(std::format("critical error: missing primary key for table \"{}\".", Name()));
+         else {
+            // ------------------------------------------------------------------------------------------
+            // determine the maximum length of the identifiers of the primary key attributes 
+            // ------------------------------------------------------------------------------------------
+            auto maxPrimElement = std::ranges::max_element(prim_attr, [](auto const& a, auto const& b) {
+               static auto constexpr len = [](auto const& e) {
+                  return e.second.Prefix().size() + e.first.Name().size();
+                  };
+               return len(a) < len(b);
+               });
 
-         if (boHasNamespace) os << "namespace " << Namespace() << " {\n\n";
+            size_t maxLengthPrimAttr = 0;
+            if (maxPrimElement != prim_attr.end()) {
+               maxLengthPrimAttr = maxPrimElement->second.Prefix().size() + maxPrimElement->first.Name().size() + 1;
+               }
+
+            auto maxPrimName = std::ranges::max_element(prim_attr, [](auto const& a, auto const& b) {
+               static auto constexpr len = [](auto const& e) {
+                  return e.first.Name().size();
+                  };
+               return len(a) < len(b);
+               });
+
+            size_t maxLengthPrimName = 0;
+            if (maxPrimName != prim_attr.end()) {
+               maxLengthPrimName = maxPrimName->first.Name().size() + 4; // additional formating
+               }
+
+
+            auto inherited = GetPart_ofs(EMyReferenceType::generalization);
+            if (!inherited.empty()) {
+               for (auto const& [table, _1, _2, _3, _4] : inherited) {
+                  os << std::format("#include {}\n", table.Include());
+                  }
+               os << "\n";
+               }
+
+            if (boHasNamespace) os << "namespace " << Namespace() << " {\n\n";
+
+            // constructor for inline class primary key
+
+            os << "// ---------------------------------------------------------------------------------------\n"
+               << std::format("// implementation for the primary_key class inside of {}\n", ClassName())
+               << "// ---------------------------------------------------------------------------------------\n"
+               << std::format("{0}::primary_key::primary_key() : ", ClassName())
+               << std::get<1>(prim_attr[0]).Prefix() + std::get<0>(prim_attr[0]).Name() + " {}";
+            for (auto const& [attr, dtype] : prim_attr | std::views::drop(1)) {
+               os << std::format(", {} {{}}", dtype.Prefix() + attr.Name());
+               }
+            os << " { }\n\n";
+
+            // initialize constructor for the primary_key type
+            std::string strAttr = std::get<1>(prim_attr[0]).Prefix() + std::get<0>(prim_attr[0]).Name();
+            os << std::format("{0}::primary_key::primary_key({1}{2} p{3}", ClassName(), std::get<1>(prim_attr[0]).SourceType(),
+                                                                           (std::get<1>(prim_attr[0]).UseReference() ? " const&" : ""),
+                                                                           std::get<0>(prim_attr[0]).Name());
+            for (auto const& [attr, dtype] : prim_attr | std::views::drop(1))
+                  os << std::format(", {0}{1} p{2}", dtype.SourceType(), (dtype.UseReference() ? " const&" : ""), attr.Name());
+            os << ") : " << std::format("{0}(p{1})", strAttr, std::get<0>(prim_attr[0]).Name());
+            for (auto const& [attr, dtype] : prim_attr | std::views::drop(1)) {
+               std::string strAttr = dtype.Prefix() + attr.Name();
+               os << std::format(", {0}(p{1})", strAttr, attr.Name());
+               }
+            os << " { }\n\n";
+
+            // copy constructor for incircling class
+            os << std::format("{0}::primary_key::primary_key({0} const& other) : {1}(other._{2}())", ClassName(), strAttr,
+                                                                                                     std::get<0>(prim_attr[0]).Name());
+            for (auto const& [attr, dtype] : prim_attr | std::views::drop(1)) {
+               os << std::format(", {0}(other._{1}())", dtype.Prefix() + attr.Name(), attr.Name());
+               }
+            os << " { }\n\n";
+
+            // copy constructor for the primary_key type
+            os << std::format("{0}::primary_key::primary_key({0}::primary_key const& other) : {1}(other.{1})", ClassName(), strAttr);
+            for (auto const& [attr, dtype] : prim_attr | std::views::drop(1)) {
+               std::string strAttr = dtype.Prefix() + attr.Name();
+               os << std::format(", {0}(other.{0})", strAttr);
+               }
+            os << " { }\n\n";
+
+            // move constructor for the primary_key type
+            // strAttr initialized still from copy constructor
+            os << std::format("{0}::primary_key::primary_key(primary_key&& other) noexcept : {1}(std::move(other.{1}))", ClassName(), strAttr);
+            for (auto const& [attr, dtype] : prim_attr | std::views::drop(1)) {
+               std::string strAttr = dtype.Prefix() + attr.Name();
+               os << std::format(", {0}(std::move(other.{0}))", strAttr);
+               }
+            os << " { }\n\n";
+
+            // constructors for class which dependent of this class
+            if (!inherited.empty()) {
+               for (auto const& [table, type_name, var_name, key_val, key_pairs] : inherited) {
+                  std::string const& strPrimAttr = FindAttribute(key_pairs[0].first).Name();
+                  std::string const& strPrimAttrPrefix = Dictionary().FindDataType(FindAttribute(key_pairs[0].first).DataType()).Prefix();
+                  os << std::format("{0}::primary_key::primary_key({1} const& other) : {2}{3}(other._{4}())", ClassName(), table.FullClassName(),
+                                                                                                 strPrimAttrPrefix, strPrimAttr,
+                                                                                              table.FindAttribute(key_pairs[0].second).Name());
+                  for (auto const& [parent_id, inherited_id] : key_pairs | std::views::drop(1)) {
+                     std::string const& strPrimAttr = FindAttribute(parent_id).Name();
+                     std::string const& strPrimAttrPrefix = Dictionary().FindDataType(FindAttribute(parent_id).DataType()).Prefix();
+                     os << std::format(", {0}{1}(other._{2}())", strPrimAttrPrefix, strPrimAttr, table.FindAttribute(inherited_id).Name());
+                     }
+                  os << " { }\n\n";
+                  }
+               }
+
+
+            os << "// conversions operator for this element to the encircling class\n"
+               << std::format("{0}::primary_key::operator {0}() const {{\n", ClassName())
+               << std::format("{0}{1} ret;\n{0}return ret.init(*this);\n{0}}}\n\n", my_indent(1), ClassName());
+
+            os << "// write method for this primary_key element\n"
+               << std::format("std::ostream& {0}::primary_key::write(std::ostream& out) const {{\n", ClassName())
+               << std::format("{0}out << \"elements of class {1}::primary_key:\\n\";\n", my_indent(1), ClassName());
+
+            for (auto const& [attr, dtype] : prim_attr) {
+               os << std::format("{0}out << std::left << std::setw({1}) << \" - {2}\" << \":\" << {3} << \'\\n\';\n", my_indent(1), 
+                                 maxLengthPrimName, attr.Name(), dtype.Prefix() + attr.Name());
+               }
+
+            os << my_indent(1) << "return out;\n"
+               << my_indent(1) << "}\n\n";
+
+            /*
+            os << "// write method for this primary_key element\n"
+               << std::format("std::ostream& {0}::primary_key::write(std::ostream& out) const {{\n", ClassName())
+               << std::format("{0}out << \"elements of class {1}::primary_key\"\n", my_indent(1), ClassName());
+
+            for (auto const& [attr, dtype] : prim_attr) {
+               os << std::format("{0}out << std::left << std::setw({1}) << \"{2}\" << \":\";\n", my_indent(1), maxLengthPrimName, attr.Name())
+                  << std::format("{0}if(!{1}) out << \"<empty>\";\n{0}else out << *{1};\n\n", my_indent(1), dtype.Prefix() + attr.Name());
+               }
+
+            os << my_indent(1) << "return out;\n"
+               << my_indent(1) << "}\n\n";
+            */
+
+            os << std::format("int {0}::primary_key::_compare(primary_key const& other) const {{\n", ClassName())
+               << my_indent(1) << "static auto constexpr comp_help = [](auto const& lhs, auto const& rhs) -> int {\n"
+               << my_indent(2) << "return (lhs < rhs ? -1 : (lhs > rhs ? 1 : 0));\n"
+               << my_indent(2) << "};\n\n";
+
+            for (auto const& [attr, dtype] : prim_attr) {
+               os << std::format("{0}if(auto ret = comp_help(this->{1}, other.{1}); ret != 0) return ret;\n", my_indent(1), dtype.Prefix() + attr.Name());
+            }
+            os << my_indent(1) << "return 0;\n"
+               << my_indent(1) << "}\n\n";
+            
+            }  // possible to move this bracket deeper because an exception thrown
+
 
          // ----------- create the default constructor for the class ----------------------------------
-
-         os << ClassName() << "::" << ClassName() << "()";
+         os << "// ---------------------------------------------------------------------------------------\n"
+            << std::format("// implementation of the class {}\n", ClassName())
+            <<  "// ---------------------------------------------------------------------------------------\n"
+            << std::format("{0}::{0}()", ClassName());
          if (!parents.empty()) {
             size_t i = 0;
             std::ranges::for_each(parents, [this, &os, &i](auto const& p) { 
@@ -663,7 +818,7 @@ bool TMyTable::CreateSource(std::ostream& os, bool boInline) const {
             << my_indent(1) << "}\n\n";
 
 
-         // ---------------  create the copy constructor for the class ---------------------------
+         // ---------------  create the move constructor for the class ---------------------------
          os << ClassName() << "::" << ClassName() << "(" << ClassName() << "&& other) noexcept";
          if (!parents.empty()) {
             size_t i = 0;
@@ -676,6 +831,15 @@ bool TMyTable::CreateSource(std::ostream& os, bool boInline) const {
          os << " {\n"
             << my_indent(1) << "_swap(other);\n"
             << my_indent(1) << "}\n\n";
+
+
+         // create an initialize operator for the primary_key class
+         os << std::format("{0}::{0}(primary_key const& other) : {1}(other.{2}())", ClassName(), 
+                             std::get<1>(prim_attr[0]).Prefix() + std::get<0>(prim_attr[0]).Name(), std::get<0>(prim_attr[0]).Name());
+         for (auto const& [attr, dtype] : prim_attr | std::views::drop(1)) {
+            os << std::format(", {0}(other.{1}())", dtype.Prefix() + attr.Name(), attr.Name());
+         }
+         os << " { }\n\n";
 
 
          // -------------------- create the destructor ------------------------------------------
@@ -811,7 +975,7 @@ bool TMyTable::CreateSource(std::ostream& os, bool boInline) const {
          if (!part_of_data.empty()) {
             os << "   // copying the composed classes\n";
             std::ranges::for_each(part_of_data, [&os, maxLength](auto const& p) {
-               os << std::format("   {0:<{1}} = {0};\n", std::get<2>(p), maxLength);
+               os << std::format("   {0:<{1}} = other.{0};\n", std::get<2>(p), maxLength);
                });
             }
          os << "   return;\n"

@@ -133,19 +133,51 @@ void TMyDictionary::Create_Doxygen(std::ostream& os) const {
          << "\\brief class with the access methods to database for all tables.\n"
          << "\\details this class contain all functions for the access to entities of the project << " << Name() << ".\n"
          << "\\details The example project \\ref pgadeccDatabase is use to implement the access to the concrete database.\n"
-         << "\\details The used sql database server is from type " << PersistenceServerType() << ".\n\n";
+         << "\\details The used sql database server is from type " << PersistenceServerType() << ".\n\n"
+         << "\\typedef " << strFullName << "::concrete_db_server\n"
+         << "\\brief credentials type to connect to a concrete database server (used for credentials and type of server)"
+         << "\\details checked about a the concept my_db_credentials. could be actually TMyMSSQL, TMyMySQL, TMyOracle, TMyInterbase or TMySQLite.\n\n";
+
+/*    todo - add this types and classes to the documentation
+
+      using concrete_db_server = " << PersistenceServerType() << ";\n"  // could be TMyMSSQL TMyMySQL TMyOracle TMyInterbase TMySQLite
+      using concrete_framework = TMyQtDb<concrete_db_server>;\n"
+      using concrete_db_connection = TMyDatabase<TMyQtDb, concrete_db_server>;\n"
+      using concrete_query = TMyQuery<TMyQtDb, concrete_db_server>;\n\n"
+      concrete_db_connection database;\n\n"
+      " << PersistenceClass() << "();\n"
+      " << PersistenceClass() << "(" << PersistenceClass() << " const&) = delete;\n"
+      " << PersistenceClass() << "(" << PersistenceClass() << "&&) noexcept = delete;\n"
+      ~" << PersistenceClass() << "() = default;\n\n";
+
+      bool IsConnectedToDatabase() const 
+      bool GetServerHasIntegratedSecurity(void) const
+      std::string GetDatabaseInformations(void) const
+      std::pair<std::string, std::string> GetConnectionInformations(void) const
+      std::pair<bool, std::string> LoginToDb(TMyCredential && credentials)
+      void LogoutFromDb(void)
+*/
 
       for (auto const& [_, table] : Tables()) {
          std::string nameSpace = PersistenceNamespace().size() > 0 ? PersistenceNamespace() + "::" : ""s;
-         os << "\\var " << nameSpace << "strSQL" << table.Name() << "All\n"
+         os << "\\var " << nameSpace << "strSQL" << table.Name() << "SelectAll\n"
             << "\\brief constant std string with the sql statement to read all tuples from table \\ref "s + table.Doc_RefName() << ".\n\n"
-            << "\\var " << nameSpace << "strSQL" << table.Name() << "Detail\n"
+            << "\\var " << nameSpace << "strSQL" << table.Name() << "SelectDetail\n"
             << "\\brief constant std string with the sql statement to read a tuple from table \\ref "s + table.Doc_RefName() << " with the primary key.\n\n"
             << "\\fn " << strFullName << "::" << std::format("Read({0}::container_ty& data)\n", table.FullClassName())
             << "\\brief method to read all data of the table \\ref " << table.Doc_RefName() << " in a container.\n"
             << "\\details the method use the const std::string " << nameSpace << "strSQL" << table.Name() << "All to read the data.\n"
             << "\\param[out] data reference to " << std::format("{0}::container_ty", table.FullClassName()) << " with the container to take the data.\n"
+            << "\\throws TMy_Db_Exception when a database error occurs.\n"
             << "\\returns bool when data readed successfull (0 .. n)\n\n"
+            << "\\fn " << strFullName << "::" << std::format("Read({0}::primary_key const& key_val, {0}& data)\n", table.FullClassName())
+            << "\\brief method to read a tuple of the table \\ref " << table.Doc_RefName() << " in a container with the primary key.\n"
+            << "\\details the method use the const std::string " << nameSpace << "strSQL" << table.Name() << "Detail to read the data.\n"
+            << "\\param[in] key_val const reference to " << std::format("{0}::primary_key", table.FullClassName()) << " with the primary key vals to identify the data.\n"
+            << "\\param[out] data reference to " << std::format("{0}", table.FullClassName()) << " with the instance to take the data.\n"
+            << "\\throws TMy_Db_Exception when a database error occurs.\n"
+            << "\\returns bool when data readed successfull (exactly one)\n\n"
+            // throw !!! todo
             ;
          }
       }
@@ -477,7 +509,7 @@ void TMyDictionary::Create_Doxygen(std::ostream& os) const {
 
 
 // -------------------------------------------------------------------------------------------------------------------
-//  Create Documantation for a table
+//  Create Documentation for a table
 // -------------------------------------------------------------------------------------------------------------------
 bool TMyTable::CreateDox(std::ostream& os) const {
 
@@ -629,8 +661,20 @@ bool TMyTable::CreateDox(std::ostream& os) const {
       << "\\throws std::runtime_error when a data element in the encircling class is empty\n"
       << "\\param [in] other " << FullyQualifiedSourceName() << " const& with the instance of the encircling class which values "
       << "should be copied\n"
-      << "\n"
-      << "\\fn " << FullyQualifiedSourceName() << "::primary_key::~primary_key()\n"
+      << "\n";
+
+   for (auto const& [table, type_name, var_name, key_val, key_pairs] : GetPart_ofs(EMyReferenceType::generalization)) {
+      os << "\\fn " << FullyQualifiedSourceName() << "::primary_key::primary_key(" << table.FullClassName() << " const& other)\n"
+         << "\\brief initializing constructor with an instance of the inherited class " << table.FullClassName()
+         << " for the class " << FullyQualifiedSourceName() << "::primary_key\n"
+         << "\\note this constructor can't be constexpr because the direct manipulator of the inherited class may throw an exception\n"
+         << "\\throws std::runtime_error when a data element in the inherited class " << table.FullClassName() << " is empty\n"
+         << "\\param [in] other " << table.FullClassName() << " const& with the instance of the inherited class which values "
+         << "should be copied\n"
+         << "\n";
+      }
+
+   os << "\\fn " << FullyQualifiedSourceName() << "::primary_key::~primary_key()\n"
       << "\\brief destructor for the primary_key class\n"
       << "\n"
 
@@ -676,6 +720,13 @@ bool TMyTable::CreateDox(std::ostream& os) const {
    os << "\\fn " << FullyQualifiedSourceName() << "::primary_key::operator " << ClassName() << " () const\n"
       << "\\brief conversion operator for the encircling class\n"
       << "\\returns value of an instance of the encircling class " << FullyQualifiedSourceName() << "\n\n";
+
+   // write to a stream
+   os << "\\fn " << FullyQualifiedSourceName() << "::primary_key::write(std::ostream& out) const\n"
+      << "\\brief method to write all elements of the instance to an std::ostream\n"
+      << "\\param[in] out reference to a std::ostream as target to write data for this instance of the class " 
+      << FullyQualifiedSourceName() << "::primary_key" << "\n"
+      << "\\returns reference to the std::ostream to continue writing after call of this function\n\n";
 
    // relational operators for the key class
    os << "\\fn " << FullyQualifiedSourceName() << "::primary_key::_compare(primary_key const&) const\n"
@@ -756,7 +807,7 @@ bool TMyTable::CreateDox(std::ostream& os) const {
    os << "\\fn " << FullyQualifiedSourceName() << "::GetKey() const\n"
       << "\\brief method to get the primary key for this instance\n"
       << "\\returns type " << FullyQualifiedSourceName() << "\n"
-      << "\\throw std::runtime::error if the attribute(s) of the primary key are empty.\n"
+      << "\\throws std::runtime::error if the attribute(s) of the primary key are empty.\n"
       << "\n";
 
    for (auto const& [table, strType, strVar, vecKeys, vecParams] : part_of_data) {
@@ -885,7 +936,7 @@ bool TMyTable::CreateDox(std::ostream& os) const {
       os << "\\brief special selector for data element " << strFullAttr << '\n';
       os << "\\details " << strComment << "\n";
       if (attr.Denotation().size() > 0) os << "\\details <b>" << attr.Denotation() << "</b>\n";
-      os << "\\throw std::runtime::error if the attribute " << strFullAttr << " is empty\n";
+      os << "\\throws std::runtime::error if the attribute " << strFullAttr << " is empty\n";
       os << "\\returns " << strRetVal << " const&: Reference to the data element " << strFullAttr << '\n';
       }
    os << "\n";

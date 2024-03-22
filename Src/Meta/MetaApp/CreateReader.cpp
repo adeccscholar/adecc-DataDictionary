@@ -31,8 +31,12 @@ bool TMyDictionary::CreateSQLStatementHeader(std::ostream& os) const {
       if (PersistenceNamespace().size() > 0) os << "namespace " << PersistenceNamespace() << " {\n\n";
 
       for (auto const& [_, table] : Tables()) {
-         os << "extern const std::string strSQL" << table.Name() << "All;\n"
-            << "extern const std::string strSQL" << table.Name() << "Detail;\n";
+         os << "extern const std::string strSQL" << table.Name() << "SelectAll;\n"
+            << "extern const std::string strSQL" << table.Name() << "SelectDetail;\n"
+            << "extern const std::string strSQL" << table.Name() << "DeleteAll;\n"
+            << "extern const std::string strSQL" << table.Name() << "DeleteDetail;\n"
+
+            ;
          }
 
       if (PersistenceNamespace().size() > 0) os << "} // close namespace " << PersistenceNamespace() << "\n";
@@ -50,7 +54,7 @@ bool TMyDictionary::CreateSQLStatementSource(std::ostream& os) const {
          << "* Project: " << Denotation() << "\n"
          << "* Implementation of sql statement for access with class " << PersistenceClass() << "\n"
          << "* Date: " << CurrentTimeStamp() << "  file created with adecc Scholar metadata generator\n";
-      if (Copyright().size() > 0) os << "* copyright (c) " << Copyright() << '\n';
+      if (Copyright().size() > 0) os << "* copyright © " << Copyright() << '\n';
       if (License().size() > 0)   os << "* " << License() << '\n';
       os << "*/\n\n"
          << "#include <" << (PathToPersistence() / (PersistenceName() + "_sql.h"s)).string() << ">\n\n";
@@ -58,14 +62,14 @@ bool TMyDictionary::CreateSQLStatementSource(std::ostream& os) const {
       if (PersistenceNamespace().size() > 0) os << "namespace " << PersistenceNamespace() << " {\n\n";
 
       for (auto const& [_, table] : Tables()) {
-         std::ostringstream tmp;
+         std::ostringstream tmp, tmpDetail;
          auto prim_keys = table.Attributes() | std::views::filter([](auto const& a) { return a.Primary(); });
          auto maxPrimElement = std::ranges::max_element(prim_keys, [](auto const& a, auto const& b) {
             return a.DBName().size() < b.DBName().size(); });
 
          size_t maxLengthPrimAttr = 0;
          if (maxPrimElement != prim_keys.end()) {
-            maxLengthPrimAttr = maxPrimElement->DBName().size() + 1;
+            maxLengthPrimAttr = maxPrimElement->DBName().size();
             }
 
          os << "// --------------------------------------------------------------------\n"
@@ -87,13 +91,24 @@ bool TMyDictionary::CreateSQLStatementSource(std::ostream& os) const {
             }
          tmp << "\\n\"\n"
              << "     \"FROM " << table.FullyQualifiedSQLName();
-         os << "const std::string strSQL" << table.Name() << "All = \n" << tmp.str() << "\";\n\n";
-         os << "const std::string strSQL" << table.Name() << "Detail = \n" << tmp.str()
-            << "\\n\"\n"
-            << "     \"WHERE " << std::format("{0:<{1}} = :key{0}", std::begin(prim_keys)->DBName(), maxLengthPrimAttr);
+         os << "const std::string strSQL" << table.Name() << "SelectAll = \n" << tmp.str() << "\";\n\n";
+         os << "const std::string strSQL" << table.Name() << "SelectDetail = \n" << tmp.str()
+            << "\\n\"\n";
+         tmpDetail << "     \"WHERE " << std::format("{0:<{1}} = :key{0}", std::begin(prim_keys)->DBName(), maxLengthPrimAttr);
          for (auto const& attrib : prim_keys | std::views::drop(1)) 
-            os << std::format(" AND\\n\"\n     \"      {0:<{1}} = :key{0}", attrib.DBName(), maxLengthPrimAttr);
-         os << "\";\n\n";
+            tmpDetail << std::format(" AND\\n\"\n     \"      {0:<{1}} = :key{0}", attrib.DBName(), maxLengthPrimAttr);
+         
+         os << tmpDetail.str() << "\";\n\n";
+
+         tmp.str("");
+         tmp << "     \"DELETE FROM " << table.FullyQualifiedSQLName();
+         os << "const std::string strSQL" << table.Name() << "DeleteAll = \n"
+            << tmp.str() << "\";\n\n";
+         
+         os << "const std::string strSQL" << table.Name() << "DeleteDetail = \n"
+            << tmp.str() << "\\n\"\n";
+         os << tmpDetail.str() << "\";\n\n";
+
          os << "\n";
          }
 
@@ -185,12 +200,15 @@ bool TMyDictionary::CreateReaderSource(std::ostream& os) const {
       if (License().size() > 0)   os << "* " << License() << '\n';
       os << "*/\n\n"
          << "#include <" << (PathToPersistence() / (PersistenceName() + "_sql.h"s)).string() << ">\n"
-         << "#include <" << (PathToPersistence() / (PersistenceName() + ".h"s)).string() << ">\n\n";
+         << "#include <" << (PathToPersistence() / (PersistenceName() + ".h"s)).string() << ">\n\n"
+         << "#include <adecc_Database\\MyDatabaseExceptions.h>\n\n";
 
+      /*
       for (auto const& [_, table] : Tables()) {
          os << "#include <" << (table.SrcPath().size() > 0 ? table.SrcPath() + "\\"s : ""s) + table.SourceName() + ".h>\n"s;
          }
       os << "\n";
+      */
       if (PersistenceNamespace().size() > 0) os << "namespace " << PersistenceNamespace() << " {\n\n";
    
 
@@ -230,11 +248,10 @@ bool TMyDictionary::CreateReaderSource(std::ostream& os) const {
 
       for (auto const& [_, table] : Tables()) {
          os << std::format("// access methods for class {}\n", table.ClassName());
-         //os << std::format("bool {1}::Read(std::map<{0}::primary_key, {0}>& data) {{\n", table.FullClassName(), PersistenceClass());
          os << std::format("bool {1}::Read({0}::container_ty& data) {{\n", table.FullClassName(), PersistenceClass());
          os << "   auto query = database.CreateQuery();\n"
-            << "   query.SetSQL(" << "strSQL" << table.Name() << "All);\n"
-            << "   for(query.Execute();!query.IsEof();query.Next()) {\n"
+            << "   query.SetSQL(" << "strSQL" << table.Name() << "SelectAll);\n"
+            << "   for(query.Execute(), query.First();!query.IsEof();query.Next()) {\n"
             << "      " << table.FullClassName() << " element;\n";
          for(auto const& attr : table.Attributes()) {
             auto const& datatype = table.Dictionary().FindDataType(attr.DataType());
@@ -249,13 +266,14 @@ bool TMyDictionary::CreateReaderSource(std::ostream& os) const {
             << "   }\n\n";
          os << std::format("bool {1}::Read({0}::primary_key const& key_val, {0}& data) {{\n", table.FullClassName(), PersistenceClass());
          os << "   auto query = database.CreateQuery();\n"
-            << "   query.SetSQL(" << "strSQL" << table.Name() << "Detail);\n";
+            << "   query.SetSQL(" << "strSQL" << table.Name() << "SelectDetail);\n";
 
          for (auto const& attr : table.Attributes() | std::views::filter([](auto const& a) { return a.Primary(); })) {
             os << "   query.Set(\"key" << attr.Name() << "\", key_val." << attr.Name() << "());\n";
             }
 
          os << "   query.Execute();\n"
+            << "   query.First();\n"
             << "   if(!query.IsEof()) {\n";
          
          for (auto const& attr : table.Attributes()) {
@@ -266,16 +284,20 @@ bool TMyDictionary::CreateReaderSource(std::ostream& os) const {
             }
 
          os << "      }\n"
-            << "   else throw std::runtime_error(\"...\");\n";
+            << "   else return false;\n"
+            << "   if(query.Next(); !query.IsEof()) {\n"
+            << "      std::ostringstream os1, os2;\n"
+            << "      os1 << \"error while reading data for " << table.ClassName() << "\";\n"
+            << "      os2 << \"couldn't read unique data for primary key element\\n\";\n"
+            << "      key_val.write(os2);\n"
+            << "      throw TMy_Db_Exception(os1.str(), os2.str(), database.Status(), strSQL" << table.Name() << "SelectDetail);\n"
+            << "      }\n"
+            ;
 
          os << "   return true;\n"
             << "   }\n\n";
          os << "\n";
       }
-
-
-
-
 
       if (PersistenceNamespace().size() > 0) os << "\n} // close namespace " << PersistenceNamespace() << "\n";
       return true;

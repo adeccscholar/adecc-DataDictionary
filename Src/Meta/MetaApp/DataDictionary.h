@@ -365,7 +365,7 @@ public:
 
    std::string Doc_RefName() const { return "datamodel_table_"s + Name(); }
 
-   std::string Include() const { return "\""s + (SrcPath().size() > 0 ? SrcPath() + "/"s : ""s) + SourceName() + ".h\""; }
+   std::string Include() const { return "\""s + (SrcPath().size() > 0 ? SrcPath() + "\\"s : ""s) + SourceName() + ".h\""; }
    /// \}
 
    TMyDictionary const& Dictionary() const { return dictionary; }
