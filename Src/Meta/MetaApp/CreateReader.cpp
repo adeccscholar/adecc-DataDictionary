@@ -31,12 +31,18 @@ bool TMyDictionary::CreateSQLStatementHeader(std::ostream& os) const {
       if (PersistenceNamespace().size() > 0) os << "namespace " << PersistenceNamespace() << " {\n\n";
 
       for (auto const& [_, table] : Tables()) {
-         os << "extern const std::string strSQL" << table.Name() << "SelectAll;\n"
+         os << "// sql statements for table " << table.FullyQualifiedSQLName() << "\n"
+            << "extern const std::string strSQL" << table.Name() << "SelectAll;\n"
             << "extern const std::string strSQL" << table.Name() << "SelectDetail;\n"
             << "extern const std::string strSQL" << table.Name() << "DeleteAll;\n"
             << "extern const std::string strSQL" << table.Name() << "DeleteDetail;\n"
-
-            ;
+            << "extern const std::string strSQL" << table.Name() << "Insert;\n"
+            << "extern const std::string strSQL" << table.Name() << "UpdateWithPrim;\n";
+            auto withoutPrim = table.Attributes() | std::views::filter([](auto const& a) { return !a.Primary(); })
+                                                  | std::ranges::to<std::vector>();
+            if (withoutPrim.size() > 0)
+               os << "extern const std::string strSQL" << table.Name() << "UpdateWithoutPrim;\n";
+            os << "\n";
          }
 
       if (PersistenceNamespace().size() > 0) os << "} // close namespace " << PersistenceNamespace() << "\n";
@@ -72,6 +78,15 @@ bool TMyDictionary::CreateSQLStatementSource(std::ostream& os) const {
             maxLengthPrimAttr = maxPrimElement->DBName().size();
             }
 
+         auto maxElement = std::ranges::max_element(table.Attributes(), [](auto const& a, auto const& b) {
+            return a.DBName().size() < b.DBName().size(); });
+
+         size_t maxLengthAttr = 0;
+         if (maxElement != table.Attributes().end()) {
+            maxLengthAttr = maxElement->DBName().size();
+            }
+
+
          os << "// --------------------------------------------------------------------\n"
             << "//   Statements for table / view: " << table.Name() << "\n"
             << "// --------------------------------------------------------------------\n";
@@ -99,6 +114,44 @@ bool TMyDictionary::CreateSQLStatementSource(std::ostream& os) const {
             tmpDetail << std::format(" AND\\n\"\n     \"      {0:<{1}} = :key{0}", attrib.DBName(), maxLengthPrimAttr);
          
          os << tmpDetail.str() << "\";\n\n";
+
+         // building lot for insert
+         tmp.str("");
+         tmp << "     \"INSERT INTO " << table.FullyQualifiedSQLName() << " ";
+         size_t prefixLen = tmp.str().size();
+         len = prefixLen;
+
+
+         tmp.str("");
+         tmp << "     \"UPDATE " << table.FullyQualifiedSQLName() << "\\n\"" << "\n     \"SET ";
+
+         os << "const std::string strSQL" << table.Name() << "UpdateWithPrim = \n" << tmp.str();
+         os << std::format("{0:<{1}} = :{0}", std::begin(table.Attributes())->DBName(), maxLengthAttr);
+         for (auto const& attrib : table.Attributes() | std::views::drop(1)) {
+            os << std::format(",\\n\"\n     \"    {0:<{1}} = :{0}", attrib.DBName(), maxLengthAttr);
+            }
+         os << "\\n\"\n" << tmpDetail.str() << "\";\n\n";
+
+         auto withoutPrim = table.Attributes() | std::views::filter([](auto const& a) { return !a.Primary(); })
+                                               | std::ranges::to<std::vector>();
+
+         if(withoutPrim.size() > 0) {
+            auto maxNonPrimElement = std::ranges::max_element(withoutPrim, [](auto const& a, auto const& b) {
+               return a.DBName().size() < b.DBName().size(); });
+
+            size_t maxLengthNonPrimAttr = 0;
+            if (maxNonPrimElement != withoutPrim.end()) {
+               maxLengthNonPrimAttr = maxNonPrimElement->DBName().size();
+               }
+
+            os << "const std::string strSQL" << table.Name() << "UpdateWithoutPrim = \n" << tmp.str();
+            os << std::format("{0:<{1}} = :{0}", std::begin(withoutPrim)->DBName(), maxLengthNonPrimAttr);
+            for (auto const& attrib : withoutPrim | std::views::drop(1)) {
+               os << std::format(",\\n\"\n     \"    {0:<{1}} = :{0}", attrib.DBName(), maxLengthNonPrimAttr);
+               }
+
+            os << "\\n\"\n" << tmpDetail.str() << "\";\n\n";
+            }
 
          tmp.str("");
          tmp << "     \"DELETE FROM " << table.FullyQualifiedSQLName();
@@ -175,11 +228,15 @@ bool TMyDictionary::CreateReaderHeader(std::ostream& os) const {
 
 
       for(auto const& [_, table] : Tables()) {
-         os << std::format("      // access methods for class {}\n", table.ClassName());
-         //os << std::format("      bool Read(std::map<{0}::primary_key, {0}>&);\n", table.FullClassName());
-         os << std::format("      bool Read({0}::container_ty&);\n", table.FullClassName());
-         os << std::format("      bool Read({0}::primary_key const&, {0}&);\n", table.FullClassName());
-         os << "\n";
+         os << std::format("      // access methods for class {}\n", table.ClassName())
+         //   << std::format("      bool Read(std::map<{0}::primary_key, {0}>&);\n", table.FullClassName())
+            << std::format("      bool Read({0}::container_ty&);\n", table.FullClassName())
+            << std::format("      bool Read({0}::primary_key const&, {0}&);\n", table.FullClassName())
+            << "\n"
+            << std::format("      // bool Delete({0}::primary_key const&);\n", table.FullClassName())
+            << std::format("      // bool Update({0}::primary_key const&, {0} const&, bool = false);\n", table.FullClassName())
+            << "\n"
+            ;
          }
 
       os << "   };\n";
@@ -297,6 +354,23 @@ bool TMyDictionary::CreateReaderSource(std::ostream& os) const {
          os << "   return true;\n"
             << "   }\n\n";
          os << "\n";
+
+         /*
+         << std::format("      bool Delete({0}::primary_key const&);\n", table.FullClassName())
+            << std::format("      bool Update({0}::primary_key const&, {0} const&, bool = false);\n", table.FullClassName())
+
+         os << std::format("bool {1}::Read({0}::primary_key const& key_val, {0}& data) {{\n", table.FullClassName(), PersistenceClass());
+         os << "   auto query = database.CreateQuery();\n"
+            << "   query.SetSQL(" << "strSQL" << table.Name() << "SelectDetail);\n";
+
+         for (auto const& attr : table.Attributes() | std::views::filter([](auto const& a) { return a.Primary(); })) {
+            os << "   query.Set(\"key" << attr.Name() << "\", key_val." << attr.Name() << "());\n";
+            }
+
+         os << "   query.Execute();\n"
+            << "   query.First();\n"
+
+            */
       }
 
       if (PersistenceNamespace().size() > 0) os << "\n} // close namespace " << PersistenceNamespace() << "\n";
