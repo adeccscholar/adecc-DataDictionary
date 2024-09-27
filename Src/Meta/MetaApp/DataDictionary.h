@@ -19,10 +19,15 @@
 #include <map>
 #include <set>
 #include <vector>
-#include <ranges>
-#include <format>
 #include <stdexcept>
 #include <filesystem>
+#include <format>
+#include <ranges>
+
+#include <cstddef>  // for std::size_t
+#include <concepts> // for concepts
+#include <coroutine>
+#include <experimental/generator>
 
 namespace fs = std::filesystem;
 
@@ -76,7 +81,7 @@ concept MySize_T =  std::same_as<ty, unsigned int> || std::is_convertible_v<ty, 
 
 class TMyDatatype {
 private:
-   using myData = std::tuple<std::string, std::string, bool, bool, std::string, std::string, std::string, std::string, bool, std::string>;
+   using myData = std::tuple<std::string, std::string, bool, bool, std::string, std::string, std::string, std::string, std::string, std::string, bool, std::string>;
    myData data;
    TMyDictionary const& dictionary;
 public:
@@ -89,9 +94,10 @@ public:
 
    TMyDatatype(TMyDictionary const& dict, std::string const& pDataType, std::string const& pDatabaseType, bool pUseLen, bool pUseScale,
                std::string const& pCheck, std::string const& pSourceType, std::string const& pHeader, std::string const& pPrefix,
+               std::string const& pCorbaType, std::string const& pCorbaModule,
                bool pUseReference, std::string const& pComment) :
       dictionary { dict },
-      data{ myData { pDataType, pDatabaseType, pUseLen, pUseScale, pCheck, pSourceType, pHeader, pPrefix, pUseReference, pComment } } { }
+      data{ myData { pDataType, pDatabaseType, pUseLen, pUseScale, pCheck, pSourceType, pHeader, pPrefix, pCorbaType, pCorbaModule, pUseReference, pComment } } { }
 
    auto const& GetKey() const { return std::get<0>(data); }
 
@@ -106,8 +112,12 @@ public:
 
    std::string const& Prefix() const { return std::get<7>(data); }
    
-   bool               UseReference() const { return std::get<8>(data); }
-   std::string const& Comment() const { return std::get<9>(data); }
+   std::string const& CorbaType() const { return std::get<8>(data);  }
+   std::string const& CorbaModule() const { return std::get<9>(data); }
+
+
+   bool               UseReference() const { return std::get<10>(data); }
+   std::string const& Comment() const { return std::get<11>(data); }
 
 };
 
@@ -260,22 +270,24 @@ using myStatements = std::vector<std::string>;
 
 class TMyNameSpace {
 private:
-   using myData = std::tuple<std::string, std::string, std::string, std::string>;
+   using myData = std::tuple<std::string, std::string, std::string, std::string, std::string>;
    myData data;
    TMyDictionary const& dictionary;
 public:
    TMyNameSpace() = delete;
    TMyNameSpace(TMyNameSpace const& other) : dictionary(other.dictionary), data(other.data) { }
-   TMyNameSpace(TMyDictionary const& dict, std::string const& pName, std::string const& pDenotation, 
+   TMyNameSpace(TMyDictionary const& dict, std::string const& pName, std::string const& pCorbaName, 
+                std::string const& pDenotation,
                 std::string const& pDescription = "", std::string const& pComment = "") :
-        dictionary(dict), data { myData { pName, pDenotation, pDescription, pComment } } { }
+        dictionary(dict), data { myData { pName, pCorbaName, pDenotation, pDescription, pComment } } { }
 
    /** \name Selectors for TMyTable
        \{ */
    std::string const& Name() const { return std::get<0>(data);  }
-   std::string const& Denotation() const { return std::get<1>(data); }
-   std::string const& Description() const { return std::get<2>(data); }
-   std::string const& Comment() const { return std::get<3>(data); }
+   std::string const& CorbaName() const { return std::get<1>(data); }
+   std::string const& Denotation() const { return std::get<2>(data); }
+   std::string const& Description() const { return std::get<3>(data); }
+   std::string const& Comment() const { return std::get<4>(data); }
    /// \}
 
 };
@@ -307,13 +319,29 @@ using myDirectories = std::map<std::string, TMyDirectory>;
 
 class TMyTable {
 private:
-   using myData = std::tuple<std::string, EMyEntityType, std::string, std::string, std::string, std::string, std::string, std::string, 
-                             std::string, std::string, std::string, myAttributes, myReferences, myIndices, myStatements, myStatements, 
+   /// internal data for class TMyTable as tuple
+   using myData = std::tuple<std::string,   //  0, name of the table - Name
+                             EMyEntityType, //  1, kind of the table - EntityType
+                             std::string,   //  2, name for sql statements - SQLName
+                             std::string,   //  3, shema for sql statements - SQLShema
+                             std::string,   //  4, name in source file - SourceName
+                             std::string,   //  5, namespace in source file - Namespace
+                             std::string,   //  6, path to the source file - SrcPath
+                             std::string,   //  7, path to the sql file - SQLPath
+                             std::string,   //  8, denotation for this table - Denotation 
+                             std::string, 
+                             std::string, 
+                             myAttributes, 
+                             myReferences, 
+                             myIndices, 
+                             myStatements, 
+                             myStatements, 
                              myStatements>;
    myData data;
    TMyDictionary const& dictionary;
  
    /// internal datatype with all composed tables and necessary informations about this
+   /// class which used for this relationship (direction may differ from the database)
    using my_part_of_type = std::tuple<TMyTable, std::string, std::string, std::vector<size_t>, std::vector<std::pair<size_t, size_t>>>;
 
 public:
@@ -354,7 +382,7 @@ public:
    std::string const& Comment() const { return std::get<10>(data); }
 
 private:
-   // keep thinks together 
+   // keep things together, manipulators for this data elements as private
    std::string&       Description() { return std::get<9>(data); }
    std::string&       Comment() { return std::get<10>(data); }
 
@@ -391,8 +419,8 @@ public:
    TMyAttribute const& FindAttribute(std::string const& strName) const;
    TMyAttribute const& FindAttribute(size_t iID) const;
 
-
-   std::vector<TMyTable> GetParents(EMyReferenceType ref_type = EMyReferenceType::generalization) const;
+   std::vector<TMyTable>         GetParents(EMyReferenceType ref_type = EMyReferenceType::generalization) const;
+   std::vector<my_part_of_type>  GetParent_ofs(EMyReferenceType ref_type = EMyReferenceType::generalization) const;
    std::vector<my_part_of_type>  GetPart_ofs(EMyReferenceType ref_type = EMyReferenceType::composition) const;
    std::vector<std::pair<TMyAttribute, TMyDatatype>> GetProcessing_Data() const;
 
@@ -515,6 +543,9 @@ class TMyDictionary {
    fs::path      pathSource;                    ///< file path to the location of the source files
    fs::path      pathSQL;                       ///< file path to the location of the sql scripts
    fs::path      pathDoc;                       ///< file path to the location of the documentation files
+   fs::path      pathIDL;                       ///< file path to the location of corba idl files
+   fs::path      pathCorba;                     ///< file path to the location of the corba implementations
+
 
    std::string strBaseClass;                    ///< BaseClass for all Classes. BaseClass created and used if set
    std::string strBaseNamespace;                ///< namespace for the BaseClass 
@@ -526,6 +557,8 @@ class TMyDictionary {
    fs::path    pathToPersistence;               ///< path without filename to Persistence class, relative to SourcePath !! 
    std::string strPersistenceServerType;        ///< servertype for the database connection of the application (could be TMyMSSQL TMyMySQL TMyOracle TMyInterbase TMySQLite)
    std::string strPersistenceDatabase;          ///< name of the database of the application
+
+   bool        boWithCorba = true;              ///< create corba idl and basic implementation for this project;
 
    myDataTypes   datatypes;                     ///< container with the datatypes for this project
    myTables      tables;                        ///< container with all tables inside of this project
@@ -549,16 +582,19 @@ public:
    std::string const& License() const { return strLicense; }
 
    std::string const& ReaderClass() const { return strReaderClass; } 
-   std::string const& ReaderFile() const { return strReaderFile;  }
+   std::string const& ReaderFile()  const { return strReaderFile;  }
 
-   fs::path const&    SourcePath() const { return pathSource; }
-   fs::path const&    SQLPath() const { return pathSQL; }
-   fs::path const&    DocPath() const { return pathDoc; }
+   fs::path const&    SourcePath()  const { return pathSource; }
+   fs::path const&    SQLPath()     const { return pathSQL; }
+   fs::path const&    DocPath()     const { return pathDoc; }
+   fs::path const&    IDLPath()     const { return pathIDL; }
+   fs::path const&    CorbaPath()   const { return pathCorba; }
 
    std::string        Identifier() const;  ///< methode to generate a identifier from project name (remove spaces)
 
    myDataTypes const& DataTypes() const { return datatypes; }; 
    myTables const&    Tables() const { return tables; };
+   std::vector<std::string> TopologicalSequence() const;
 
    bool               UseBaseClass() const { return strBaseClass.size() > 0; }
    std::string const& BaseClass() const { return strBaseClass; }
@@ -593,8 +629,12 @@ public:
    std::string const& ReaderFile(std::string const& newVal) { return strReaderFile = newVal; }
 
    fs::path const& SourcePath(fs::path const& newPath) { return pathSource = newPath; }
-   fs::path const& SQLPath(fs::path const& newPath) { return pathSQL = newPath; }
-   fs::path const& DocPath(fs::path const& newPath) { return pathDoc = newPath; }
+   fs::path const& SQLPath(fs::path const& newPath)    { return pathSQL    = newPath; }
+   fs::path const& DocPath(fs::path const& newPath)    { return pathDoc    = newPath; }
+   fs::path const& IDLPath(fs::path const& newPath)    { return pathIDL    = newPath; }
+   fs::path const& CorbaPath(fs::path const& newPath)  { return pathCorba  = newPath; }
+
+
 
    std::string const& BaseClass(std::string const& newVal) { return strBaseClass = newVal; }
    std::string const& BaseNamespace(std::string const& newVal) { return strBaseNamespace = newVal; }
@@ -615,7 +655,9 @@ public:
 
    TMyDatatype& AddDataType(std::string const& pDataType, std::string const& pDatabaseType, bool pUseLen, bool pUseScale,
                             std::string const& pCheck, std::string const& pSourceType, std::string const& pHeader, 
-                            std::string const& pPrefix, bool pUseReference, std::string const& pComment);
+                            std::string const& pPrefix, 
+                            std::string const& pCorbaType, std::string const& pCorbaModule,
+                            bool pUseReference, std::string const& pComment);
    /// \}
 
 
@@ -631,7 +673,7 @@ public:
 
    TMyNameSpace&       FindNameSpace(std::string const& pName);
    TMyNameSpace const& FindNameSpace(std::string const& pName) const;
-   TMyDictionary&      AddNameSpace(std::string const& pName, std::string const& pDenotation, 
+   TMyDictionary&      AddNameSpace(std::string const& pName, std::string const& pCorbaName, std::string const& pDenotation,
                                     std::string const& pDescription = "", std::string const& pComment = "");
 
    TMyDirectory&       FindDirectory(std::string const& pName);
@@ -659,9 +701,19 @@ public:
    bool CreateReaderHeader(std::ostream& out = std::cout) const;
    bool CreateReaderSource(std::ostream& out = std::cout) const;
 
+   bool CreateBasicCorbaIDL(std::ostream& out = std::cout) const;
+   bool CreateBasicCorbaHeader(std::ostream& out = std::cout) const;
+   bool CreateCorbaIDL(std::ostream& out = std::cout) const;
+
+   bool CreateCorbaImplementationHeader(std::ostream& out) const;
+   bool CreateCorbaImplementationSource(std::ostream& out, std::string const& strHeader) const;
 
    void Create_All(std::ostream& out = std::cout, std::ostream& err = std::cerr) const;
 
    void Test() const;
+
+private:
+   std::vector<std::tuple<std::string, std::string, std::vector<size_t>>> GetCompositions(TMyTable const&) const;
+   std::vector<std::tuple<std::string, std::string, std::string, std::string, std::vector<size_t>>> GetRangeValues(TMyTable const& table) const;
 };
 

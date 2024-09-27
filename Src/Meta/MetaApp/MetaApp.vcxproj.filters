@@ -39,6 +39,9 @@
     <ClCompile Include="CreateReader.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="CreateCorbaIDL.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DataDictionary.h">
@@ -54,6 +57,12 @@
       <Filter>Dokumentation</Filter>
     </ClInclude>
     <ClInclude Include="Test_Dictionary.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="DictionaryHelper.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="Generator %28unused%29.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

@@ -23,53 +23,51 @@
 TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
    std::ostringstream os1, os2;
 
+   os1 << "Model for a simple management of personal data for testing and presenting the use of "
+       << "metadata with a generator and for discussing the possibilities of using metadata.\n"
+       << "The model is implemented using the adecc Scholar metadata class TMyDictionary and "
+       << "the associated classes TMyDatatype, TMyAttribute, TMyTable, TMyReferences and TMyIndices.\n"
+
+       << "In addition to the necessary C++ source code for the classes of the system layer, this generator "
+       << "also creates scripts for creating the database with conditions and value tables and the basis for "
+       << "detailed documentation with Doxygen in separate files. In addition, methods are created that enable "
+       << "access using the database interface of the adeccDatabase library developed in this stream.\n"
+
+       << "The advantage of using generators that work on the basis of metadata is not only the enormous time saving, "
+       << "but also the correctness. This means that all parts are up-to-date and 100% aligned with each other.\n"
+       << "The basis for this model was taken from a training project by adecc Systemhaus GmbH and expanded once again.\n"
+       << "The following image show a draft paper / scratch pad of the background for this trainings project.\n"
+       << "\\image html Kladde.jpg\n"
+       << "\\image latex Kladde.jpg\n"
+
+       << "The following model diagram is created with the Embarcader E/R Studio and show the initial model from the former project.\n"
+
+       << "\\image html ER-Model.jpg<br>"
+       << "\\image latex ERModelLS.tif\n";
+
+   os1 << "This model was created to show and discuss the potential of metadata and the generation "
+       << "of source code, database scripts and documentation.\n"
+       << "In the model, in addition to the is - a relationship between the Person and Employee tables, "
+       << "there is a part - of relationship to employee working hours and an association to the departments "
+       << "in which employees work.\n"
+       << "In addition, there are a number of extended value tables to show that these do not only have to "
+       << "consist of an ID and name, but can also contain other data.\n"
+       << "The project, including all additional files and documentations, are part of the source code of the "
+       << "\"adecc Scholar\" project. The purpose of this project is to impart know-how on architecture and "
+       << "technology when using the programming language C++. The MIT license applies unless otherwise stated "
+       << "or other licenses must be used due to legal requirements.";
+
+   os2 << "There are many discussions about programming guidelines, names of identifiers, the pros and cons of "
+       << "notations (Hungarian notation, all lowercase, first letter uppercase, ...). These discussions also "
+       << "fade against the background of programming with metadata and can easily be adapted to any standard "
+       << "without any significant effort.\n"
+       << "Finally, please note that these sources are only training materials and explicitly not productive "
+       << "sources. You can use them according to the license in your own application, but there is no claim "
+       << "to correctness or any form of warranty.";
+
    dictionary.Denotation("model with a simple person administration");
    dictionary.Description(os1.str());
    dictionary.Comment(os2.str());
-
-   os1 << "Model for a simple management of personal data for testing and presenting the use of "
-      << "metadata with a generator and for discussing the possibilities of using metadata.\n"
-      << "The model is implemented using the adecc Scholar metadata class TMyDictionary and "
-      << "the associated classes TMyDatatype, TMyAttribute, TMyTable, TMyReferences and TMyIndices.\n"
-
-      << "In addition to the necessary C++ source code for the classes of the system layer, this generator "
-      << "also creates scripts for creating the database with conditions and value tables and the basis for "
-      << "detailed documentation with Doxygen in separate files. In addition, methods are created that enable "
-      << "access using the database interface of the adeccDatabase library developed in this stream.\n"
-
-      << "The advantage of using generators that work on the basis of metadata is not only the enormous time saving, "
-      << "but also the correctness. This means that all parts are up-to-date and 100% aligned with each other.\n"
-
-      << "The basis for this model was taken from a training project by adecc Systemhaus GmbH and expanded once again.\n"
-      << "The following image show a draft paper / scratch pad of the background for this trainings project.\n"
-      << "\\image html Kladde.jpg\n"
-      << "\\image latex Kladde.jpg\n"
-
-      << "The following model diagram is created with the Embarcader E/R Studio and show the initial model from the former project.\n"
-
-      << "\\image html ER-Model.jpg<br>"
-      << "\\image latex ERModelLS.tif\n";
-
-   os1 << "This model was created to show and discuss the potential of metadata and the generation "
-      << "of source code, database scripts and documentation.\n"
-      << "In the model, in addition to the is - a relationship between the Person and Employee tables, "
-      << "there is a part - of relationship to employee working hours and an association to the departments "
-      << "in which employees work.\n"
-      << "In addition, there are a number of extended value tables to show that these do not only have to "
-      << "consist of an ID and name, but can also contain other data.\n"
-      << "The project, including all additional files and documentations, are part of the source code of the "
-      << "\"adecc Scholar\" project. The purpose of this project is to impart know-how on architecture and "
-      << "technology when using the programming language C++. The MIT license applies unless otherwise stated "
-      << "or other licenses must be used due to legal requirements.";
-
-   os2 << "There are many discussions about programming guidelines, names of identifiers, the pros and cons of "
-      << "notations (Hungarian notation, all lowercase, first letter uppercase, ...). These discussions also "
-      << "fade against the background of programming with metadata and can easily be adapted to any standard "
-      << "without any significant effort.\n"
-      << "Finally, please note that these sources are only training materials and explicitly not productive "
-      << "sources. You can use them according to the license in your own application, but there is no claim "
-      << "to correctness or any form of warranty.";
-
 
 
    dictionary.Version("1.0");
@@ -87,27 +85,29 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
    dictionary.PersistenceServerType("TMyMSSQL");
    dictionary.PersistenceDatabase("Test_Personen");
 
-   dictionary.AddDataType("bigint", "BIGINT", false, false, "", "long long", "", "i", false, "BIGINT is largest integer data type for SQL Server . It uses 8 bytes of storage.");
-   dictionary.AddDataType("bool", "TINYINT", false, false, "IN (0, 1)", "bool", "", "bo", false, "boolean (true = 1, false = 2) in source will transformed to TINYINT. This is the smallest integer data type and only uses 1 byte of storage. this data type is an integer value from 0 to 255.");
-   dictionary.AddDataType("char", "CHAR", true, false, "", "std::string", "<string>", "c", true, "CHAR is a fixed-sized character data type and will transformed to a std::string. Use this type when values are consistent in length. The max  size is 8,000, storing up to 8,000 ASCII characters.");
-   dictionary.AddDataType("date", "DATE", false, false, "", "std::chrono::year_month_day", "<chrono>", "da", false, "date is the DATE data type which is specifies a date in SQL Server.  DATE supports dates from 0001-01-01 through 9999-12-31. Ist will transformed to a std::chrono::year_month_day which is supported from C++20. DATE supports dates from 0001-01-01 through 9999-12-31.");
-   dictionary.AddDataType("datetime", "DATE", false, false, "", "std::chrono::system_clock::time_point", "<chrono>", "dt", false, "datetime is the DATETIME data type which specifies a date and time with fractional seconds. Ist supports dates from January 1, 1753, through December 31, 9999. the time is based on 24-hour clock. For source code  this type will interpreted as std::chrono::system_clock::time_point>");
-   dictionary.AddDataType("decimal", "DECIMAL", true, true, "", "double", "", "fl", true, "the DECIMAL data type is an exact number with a fixed precision and scale. precision is an integer representing the total number of digits and scale is also an integer value that represents the number of decimal places. It could be transfered to an bcd type, but we use double as representing type for source code.");
-   dictionary.AddDataType("double", "FLOAT", false, false, "", "double", "", "fl", true, "The FLOAT data type is an approximate number with floating point data equal to ieee coded values in programming (this means not all values can be represented exactly).");
-   dictionary.AddDataType("integer", "INT", false, false, "", "int", "", "i", false, "the INT data type is an the most used integer value type in SQL Server and  uses 4 bytes of storage.  it always stores positive and negative values. The type will translated to an int type of c++.");
-   dictionary.AddDataType("smallint", "SMALLINT", false, false, "", "short int", "", "i", false, "the SMALLINT data type is an integer value from -32,768 to 32,767 and uses 2 bytes of storage. In c++ is the short int type used to represent this data.");
-   dictionary.AddDataType("unsigned", "INT", false, false, ">= 0", "unsigned int", "", "u", false, "the INT data type is an the most used integer value type in SQL Server and  uses 4 bytes of storage.  it always stores positive and negative values. The type will translated to an int type of c++.");
-   dictionary.AddDataType("varchar", "VARCHAR", true, false, "", "std::string", "<string>", "str", true, "the VARCHAR data type stores variable-length character strings and is used when there is variability in the size of the data. The type may hold up to 8,000 ASCII characters of data. For c++ this datatype use std::string.");
-   dictionary.AddDataType("text", "VARCHAR(MAX)", false, false, "", "std::string", "<string>", "str", true, "the VARCHAR(MAX) data type stores variable-length character strings and is used to store very large, i.e. max length, character data. It can hold mostly as much as 2GB of ASCII character data. For c++ this datatype use std::string.");
+   dictionary.AddDataType("bigint", "BIGINT", false, false, "", "long long", "", "i", "long long", "", false, "BIGINT is largest integer data type for SQL Server . It uses 8 bytes of storage.");
+   dictionary.AddDataType("bool", "TINYINT", false, false, "IN (0, 1)", "bool", "", "bo", "boolean", "", false, "boolean (true = 1, false = 2) in source will transformed to TINYINT. This is the smallest integer data type and only uses 1 byte of storage. this data type is an integer value from 0 to 255.");
+   dictionary.AddDataType("char", "CHAR", true, false, "", "std::string", "<string>", "c", "", "", true, "CHAR is a fixed-sized character data type and will transformed to a std::string. Use this type when values are consistent in length. The max  size is 8,000, storing up to 8,000 ASCII characters.");
+   dictionary.AddDataType("date", "DATE", false, false, "", "std::chrono::year_month_day", "<chrono>", "da", "BasicModule::YearMonthDay", "Basic.idl", false, "date is the DATE data type which is specifies a date in SQL Server.  DATE supports dates from 0001-01-01 through 9999-12-31. Ist will transformed to a std::chrono::year_month_day which is supported from C++20. DATE supports dates from 0001-01-01 through 9999-12-31.");
+   dictionary.AddDataType("datetime", "DATE", false, false, "", "std::chrono::system_clock::time_point>", "<chrono>", "dt", "BasicModule::TimePoint", "Basic.idl", false, "datetime is the DATETIME data type which specifies a date and time with fractional seconds. Ist supports dates from January 1, 1753, through December 31, 9999. the time is based on 24-hour clock. For source code  this type will interpreted as std::chrono::system_clock::time_point>");
+   dictionary.AddDataType("decimal", "DECIMAL", true, true, "", "double", "", "fl", "double", "", true, "the DECIMAL data type is an exact number with a fixed precision and scale. precision is an integer representing the total number of digits and scale is also an integer value that represents the number of decimal places. It could be transfered to an bcd type, but we use double as representing type for source code.");
+   dictionary.AddDataType("double", "FLOAT", false, false, "", "double", "", "fl", "double", "", true, "The FLOAT data type is an approximate number with floating point data equal to ieee coded values in programming (this means not all values can be represented exactly).");
+   dictionary.AddDataType("integer", "INT", false, false, "", "int", "", "i", "long", "", false, "the INT data type is an the most used integer value type in SQL Server and  uses 4 bytes of storage.  it always stores positive and negative values. The type will translated to an int type of c++.");
+   dictionary.AddDataType("smallint", "SMALLINT", false, false, "", "short int", "", "i", "short", "", false, "the SMALLINT data type is an integer value from -32,768 to 32,767 and uses 2 bytes of storage. In c++ is the short int type used to represent this data.");
+   dictionary.AddDataType("unsigned", "INT", false, false, ">= 0", "unsigned int", "", "u", "unsigned long", "", false, "the INT data type is an the most used integer value type in SQL Server and  uses 4 bytes of storage.  it always stores positive and negative values. The type will translated to an int type of c++.");
+   dictionary.AddDataType("varchar", "VARCHAR", true, false, "", "std::string", "<string>", "str", "string", "", true, "the VARCHAR data type stores variable-length character strings and is used when there is variability in the size of the data. The type may hold up to 8,000 ASCII characters of data. For c++ this datatype use std::string.");
+   dictionary.AddDataType("text", "VARCHAR(MAX)", false, false, "", "std::string", "<string>", "str", "string", "", true, "the VARCHAR(MAX) data type stores variable-length character strings and is used to store very large, i.e. max length, character data. It can hold mostly as much as 2GB of ASCII character data. For c++ this datatype use std::string.");
 
-   dictionary.AddNameSpace("myCorporate", "namespace with the classes that are used jointly by all parts of the company",
+   dictionary.AddNameSpace("myCorporate", "CorporateModule",
+                           "namespace with the classes that are used jointly by all parts of the company",
                            "This area contains all classes, enumerations and data structures that are shared by different parts of the "
                            "company. These types are the central services in all programs that are developed in the corporate environment "
                            "and are further developed by a central department that is controlled by a board made up of those responsible for " 
                            "the other areas.",
                            "This area is under responsibility of the central services department.");
 
-   dictionary.AddNameSpace("myHR", "namespace with the classes that are developed for use in the department of human resources.",
+   dictionary.AddNameSpace("myHR", "HumanResourceModule",
+                           "namespace with the classes that are developed for use in the department of human resources.",
                            "This area contains the classes and data structures that are used in the personnel administration area. "
                            "In addition to the classes for managing employees and departments, there are also payroll accounting and "
                            "data for these.\n"
@@ -130,6 +130,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
                             "This folder contains all header and source files for the system layer of the part of "
                             "human resources");
 
+ 
    dictionary.AddTable("Address", EMyEntityType::table, "Address", "dbo", "Address", "myCorporate", "System\\Corporate", "SQL", "information on the addresses where a person lives, works or has any other relationship with them.")
       .AddAttribute(1, "ID", "ID", "integer", 0, 0, true, true, "", "", "", "attribute as Foreign key from an attribute ID of the person entity to whom the address belongs")
       .AddAttribute(2, "AddressType", "AddressType", "integer", 0, 0, true, true, "", "", "", "extension of the key by the address type to manage different addresses for one person")
@@ -235,7 +236,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(5, "Officer", "Officer", "integer", 0, 0, false, false, "", "", "", "person responsible / head of this department (association with the employys entity)")
       .AddAttribute(6, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "free notes to record information that is not used in the program")
 
-      .AddReference("refDepartments2Employee", EMyReferenceType::assoziation, "Employees", "responsible", "n : 1", { 9 }, "assoziation between the department to employee who is the responsible officer for this", { {5,2} })
+      .AddReference("refDepartments2Employee", EMyReferenceType::assoziation, "Employees", "responsible", "n : 1", { 9 }, "assoziation between the department to employee who is the responsible officer for this", { {5,1} })
 
       .AddIndex("uk_Departments_Denotation", EMyIndexType::key, "unique / representative denotation forthe department as key canditate for this entity", { { 2, true } })
       .AddIndex("idx_Departments_Abbr", EMyIndexType::undefined, "search pass for abbreviations of departments", { { 3, true } })
@@ -243,28 +244,27 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       ;
 
    dictionary.AddTable("Employees", EMyEntityType::table, "Employees", "dbo", "Employees", "myHR", "System\\HR", "SQL", "information about the employees in the company (generalization of a person)")
-      .AddAttribute(1, "Dummy", "Dummy", "integer", 0, 0, false, false, "", "", "", "dummy field to test the generator")
-      .AddAttribute(2, "EmployeeID", "EmployeeID", "integer", 0, 0, true, true, "", "", "", "attribute as foreign key from an attribute ID of a person entity to which these account details belong")
-      .AddAttribute(3, "PersonNumber", "PersonNumber", "varchar", 15, 0, true, false, "", "", "", "unique HR number of the employee in the company, assigned by the HR department")
-      .AddAttribute(4, "Salary", "Salary", "decimal", 10, 2, false, false, ">= 0.0", "", "", "salary / income that the employee currently receives, dependant by the SalaryBase")
-      .AddAttribute(5, "SalaryType", "SalaryType", "integer", 0, 0, false, false, "", "", "", "range for SalaryType with the kind of Salary and determine the SalaryBase for the calculation")
-      .AddAttribute(6, "TaxClass", "TaxClass", "integer", 0, 0, true, false, "", "", "", "Tax class currently held by the employee")
-      .AddAttribute(7, "StartOfJob", "StartOfJob", "date", 0, 0, true, false, "", "", "", "starting date of the employee in the company (can be extended later for the start of the current position)")
-      .AddAttribute(8, "EndOfJob", "EndOfJob", "date", 0, 0, false, false, "[EndOfJob IS NULL OR (EndOfJob > StartOfJob)]", "", "", "end date of the employee in the company, all dates without time history")
-      .AddAttribute(9, "ReasonDeparture", "ReasonDeparture", "integer", 0, 0, false, false, "[(ReasonDeparture IS NULL AND EndOfJob IS NULL) OR  (ReasonDeparture IS NOT NULL AND EndOfJob IS NOT NULL)]", "", "", "reason of departture when the person separated and the emplyment finished (NULL if active)")
-      .AddAttribute(10, "JobPosition", "JobPosition", "integer", 0, 0, false, false, "", "", "", "current position / activity of the employee within the company")
-      .AddAttribute(11, "JobSpec", "JobSpec", "varchar", 100, 0, false, false, "", "", "", "specification of the job as free text to concretize this")
-      .AddAttribute(12, "VacationDays", "VacationDays", "unsigned", 0, 0, false, false, "", "", "", "Entitlement to annual vacations for this employee")
-      .AddAttribute(13, "Department", "Department", "integer", 0, 0, true, false, "", "", "", "id of the department where the employee currently work")
-      .AddAttribute(14, "SocialNummer", "SocialNummer", "varchar", 20, 0, true, false, "", "", "", "social insurance number of the employee")
-      .AddAttribute(15, "Active", "Active", "bool", 0, 0, false, false, "", "", "[IIF(EndOfJob IS NULL OR EndOfJob >= GETDATE(), 1, 0)]", "calculated boolean value indicating whether the person is active in the company")
+      .AddAttribute(1, "EmployeeID", "EmployID", "integer", 0, 0, true, true, "", "", "", "attribute as foreign key from an attribute ID of a person entity to which these account details belong")
+      .AddAttribute(2, "PersonNumber", "PersonNumber", "varchar", 15, 0, true, false, "", "", "", "unique HR number of the employee in the company, assigned by the HR department")
+      .AddAttribute(3, "Salary", "Salary", "decimal", 10, 2, false, false, ">= 0.0", "", "", "salary / income that the employee currently receives, dependant by the SalaryBase")
+      .AddAttribute(4, "SalaryType", "SalaryType", "integer", 0, 0, false, false, "", "", "", "range for SalaryType with the kind of Salary and determine the SalaryBase for the calculation")
+      .AddAttribute(5, "TaxClass", "TaxClass", "integer", 0, 0, true, false, "", "", "", "Tax class currently held by the employee")
+      .AddAttribute(6, "StartOfJob", "StartOfJob", "date", 0, 0, true, false, "", "", "", "starting date of the employee in the company (can be extended later for the start of the current position)")
+      .AddAttribute(7, "EndOfJob", "EndOfJob", "date", 0, 0, false, false, "[EndOfJob IS NULL OR (EndOfJob > StartOfJob)]", "", "", "end date of the employee in the company, all dates without time history")
+      .AddAttribute(8, "ReasonDeparture", "ReasonDeparture", "integer", 0, 0, false, false, "[(ReasonDeparture IS NULL AND EndOfJob IS NULL) OR  (ReasonDeparture IS NOT NULL AND EndOfJob IS NOT NULL)]", "", "", "reason of departture when the person separated and the emplyment finished (NULL if active)")
+      .AddAttribute(9, "JobPosition", "JobPosition", "integer", 0, 0, false, false, "", "", "", "current position / activity of the employee within the company")
+      .AddAttribute(10, "JobSpec", "JobSpec", "varchar", 100, 0, false, false, "", "", "", "specification of the job as free text to concretize this")
+      .AddAttribute(11, "VacationDays", "VacationDays", "unsigned", 0, 0, false, false, "", "", "", "Entitlement to annual vacations for this employee")
+      .AddAttribute(12, "Department", "Department", "integer", 0, 0, true, false, "", "", "", "id of the department where the employee currently work")
+      .AddAttribute(13, "SocialNummer", "SocialNummer", "varchar", 20, 0, true, false, "", "", "", "social insurance number of the employee")
+      .AddAttribute(14, "Active", "Active", "bool", 0, 0, false, false, "", "", "[IIF(EndOfJob IS NULL OR EndOfJob >= GETDATE(), 1, 0)]", "calculated boolean value indicating whether the person is active in the company")
 
-      .AddReference("refEmployees2Person", EMyReferenceType::generalization, "Person", "is-a", "1 : 1", { 9 }, "generalization from an employee to a person (is-a relationship)", { {2,1} })
-      .AddReference("refEmployees2SalaryType", EMyReferenceType::range, "SalaryType", "has values", "n : 1", { 2 }, "range values as domain for the attribute SalaryType (inside this SalaryBase)", { {5,1} })
-      .AddReference("refEmployees2TaxClass", EMyReferenceType::range, "TaxClasses", "has values", "n : 1", { 2 }, "range value as domain for the attribute TaxClass", { {6,1} })
-      .AddReference("refEmployees2ReasonDeparture", EMyReferenceType::range, "ReasonDeparture", "separation because", "n : 1", { 2 }, "range value as domain for the reason for departure of the employee", { {9,1} })
-      .AddReference("refEmployees2JobPositions", EMyReferenceType::range, "JobPositions", "holds", "n : 1", { 2 }, "range value as domain for this attribute, possible jobpositions in company", { {10,1} })
-      .AddReference("refEmployees2Department", EMyReferenceType::assoziation, "Departments", "works in", "n : 1", { 2 }, "assoziations between an employee to the department where she/he work", { {13,1} })
+      .AddReference("refEmployees2Person", EMyReferenceType::generalization, "Person", "is-a", "1 : 1", { 9 }, "generalization from an employee to a person (is-a relationship)", { {1,1} })
+      .AddReference("refEmployees2SalaryType", EMyReferenceType::range, "SalaryType", "has values", "n : 1", { 2 }, "range values as domain for the attribute SalaryType (inside this SalaryBase)", { {4,1} })
+      .AddReference("refEmployees2TaxClass", EMyReferenceType::range, "TaxClasses", "has values", "n : 1", { 2 }, "range value as domain for the attribute TaxClass", { {5,1} })
+      .AddReference("refEmployees2ReasonDeparture", EMyReferenceType::range, "ReasonDeparture", "separation because", "n : 1", { 2 }, "range value as domain for the reason for departure of the employee", { {8,1} })
+      .AddReference("refEmployees2JobPositions", EMyReferenceType::range, "JobPositions", "holds", "n : 1", { 2 }, "range value as domain for this attribute, possible jobpositions in company", { {9,1} })
+      .AddReference("refEmployees2Department", EMyReferenceType::assoziation, "Departments", "works in", "n : 1", { 2 }, "assoziations between an employee to the department where she/he work", { {12,1} })
 
       .AddIndex("uk_Employees_PersonNumber", EMyIndexType::key, "unique personal number of a employee in company (key canditate)", { { 3, true } })
       .AddIndex("uk_Employees_SocialNumber", EMyIndexType::key, "extern unique number of an employee (key canditate)", { { 9, true } })
@@ -394,7 +394,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(6, "FamilyStatusSince", "FamilyStatusSince", "date", 0, 0, false, false, "", "", "", "the date from which the current family status applies.")
       .AddAttribute(7, "Birthday", "Birthday", "date", 0, 0, false, false, "", "", "", "birthday of a natural person. This attribute is unused for legal entrities")
       .AddAttribute(8, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information for this tperson, not used in application")
-      .AddAttribute(9, "FullName", "FullName", "varchar", 60, 0, false, false, "", "", "Name + ', ' + FirstName", "calculated field for displaying the full name for use in the program, for example, if a person is to be selected")
+      .AddAttribute(9, "FullName", "FullName", "varchar", 60, 0, false, false, "", "", "FirstName + ' ' + Name", "calculated field for displaying the full name for use in the program, for example, if a person is to be selected")
 
       .AddReference("refPerson2FormOfAddress", EMyReferenceType::range, "FormOfAddress", "has values", "1 : n", { 2 }, "range value to extent the relationship of a person to a form of address", { {4,1} })
       .AddReference("refPerson2FamilyStatus", EMyReferenceType::range, "FamilyStatus", "has values", "1 : n", { 2 }, "range value to extent the relationship of a person to a family status", { {5,1} })
@@ -593,7 +593,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(4, "Reason", "Reason", "integer", 0, 0, true, false, "BETWEEN 0 AND 6", "", "", "reason of non working time, there exist a table, but values are interpreted through the applications")
       .AddAttribute(5, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "free notices to the non-working time")
 
-      .AddReference("refNonWorking2Employee", EMyReferenceType::composition, "Employees", "idled", "1 : n", { }, "part of relationship to idle times / times of non working", { {1,2} })
+      .AddReference("refNonWorking2Employee", EMyReferenceType::composition, "Employees", "idled", "1 : n", { }, "part of relationship to idle times / times of non working", { {1,1} })
       .AddReference("refNonWorking2Workday_Start", EMyReferenceType::assoziation, "WD_Workdays", "is at", "1 : n", { }, "assoziation between the non-working time and the working days for the begin", { {2,1} })
       .AddReference("refNonWorking2Workday_Finishing", EMyReferenceType::assoziation, "WD_Workdays", "is at", "1 : n", { }, "assoziation between the non-working time and the working days for the end", { {3,1} })
       .AddReference("refNonWorking2Reason", EMyReferenceType::range, "ReasonNonWorking", "has values", "1 : n", { 2 }, "range value who describe the reason for the idle time", { {4,1} })
@@ -659,7 +659,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(5, "ProcessedAt", "ProcessedAt", "datetime", 0, 0, false, false, "", "", "", "time at which this data record was settled and posted")
       .AddAttribute(6, "DayOfWork", "DayOfWork", "date", 0, 0, false, false, "", "", "{convert(date, StartingTime)}", "calculated day to the timepoint where work started")
 
-      .AddReference("refWorkTime2Employee", EMyReferenceType::composition, "Employees", "worked", "1 : n", { }, "part of relationship of work times to the employees", { {1,2} })
+      .AddReference("refWorkTime2Employee", EMyReferenceType::composition, "Employees", "worked", "1 : n", { }, "part of relationship of work times to the employees", { {1,1} })
       ;
 
 
@@ -694,7 +694,9 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
    dictionary.AddDirectory("System\\Sales", "subfolder with header and source files for the source files about customers and sales informations.",
       "This folder contains all header and source files for the sales system layer with customer and sales informations.");
 
-   dictionary.AddNameSpace("mySales", "namespace with the classes that are developed for use in the department of sales.",
+
+   dictionary.AddNameSpace("mySales", "SalesModule",
+      "namespace with the classes that are developed for use in the department of sales.",
       "This area contains the classes and data structures that are used in the sales and customer service area.\n"
       "This area is under the responsibility of the Sales department");
 
@@ -777,11 +779,10 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       .AddReference("refCustomers2Person", EMyReferenceType::generalization, "Person", "is-a", "1 : 1", { 9 }, "generalization from a custumer to a person (is-a relationship)", { {1,1} })
       .AddReference("refCustomers2Classification", EMyReferenceType::range, "CustClassification", "has values", "n : 1", { 2 }, "range values as domain for the attribute CustClassification", { {3,1} })
-      .AddReference("refCustomers2Employees_SA", EMyReferenceType::assoziation, "Employees", "works in", "n : 1", { 2 }, "assoziations between an customer to the the employee who act as service agent", { {2,2} })
+      .AddReference("refCustomers2Employees_SA", EMyReferenceType::assoziation, "Employees", "works in", "n : 1", { 2 }, "assoziations between an customer to the the employee who act as service agent", { {2,1} })
       .AddReference("refCustomers2LegalForms", EMyReferenceType::range, "CorporateForm", "has values", "n : 1", { 3 }, "range values as domain for the attribute LegalForms", { {4,1} })
 
       ;
-
 
 
    }
