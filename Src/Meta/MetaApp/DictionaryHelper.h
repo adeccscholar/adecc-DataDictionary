@@ -34,7 +34,7 @@ namespace own {
    struct is_set : std::false_type {};
 
    template <typename ty, typename compare_ty, typename alloc_ty>
-   struct is_set<std::set<ty, compare_ty, alloc_type>> : std::true_type {};
+   struct is_set<std::set<ty, compare_ty, alloc_ty>> : std::true_type {};
    
    // --------------------------------------------------------------------------
    template <typename ty, typename = void>
