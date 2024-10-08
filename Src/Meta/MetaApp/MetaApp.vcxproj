@@ -142,6 +142,7 @@
     <ClCompile Include="GenerateDox.cpp" />
     <ClCompile Include="CreateReader.cpp" />
     <ClCompile Include="CreateCorbaIDL.cpp" />
+    <ClCompile Include="fibunacci.cpp" />
     <ClCompile Include="Test_Dictionary.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -151,6 +152,13 @@
     <ClInclude Include="Documentation\Documentation_adecc_Scholar.h" />
     <ClInclude Include="DictionaryHelper.h" />
     <ClInclude Include="Generator %28unused%29.h" />
+    <ClInclude Include="GenerateSQL.h" />
+    <ClInclude Include="Algorithm %28unused%29.h" />
+    <ClInclude Include="fibunacci.h" />
+    <ClInclude Include="GenerateSQL.inl" />
+    <ClInclude Include="MyProperty.h" />
+    <ClInclude Include="MyStatements.h" />
+    <ClInclude Include="RangesHelper.h" />
     <ClInclude Include="Test_Dictionary.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

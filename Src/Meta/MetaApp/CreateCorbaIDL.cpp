@@ -237,19 +237,16 @@ bool TMyDictionary::CreateCorbaIDL(std::ostream& out) const {
                                      })
                               | std::ranges::to<std::vector>();
 
-   //auto max_type_length = std::ranges::max(all_tables | std::views::transform([](auto const& d) { return d.first.size(); }));
-   
    auto max_type_length = std::ranges::max(all_tables | own::views::first | own::views::size);
 
+   /*
    std::cout << std::format("\nTest: {}\n", max_type_length);
    for (size_t i = 0; auto const& t : all_tables | own::views::first | own::views::size_co) {
       std::cout << (i++ > 0 ? ", " : " ") << t;
       }
    std::cout << "\n";
-
-   
-
-
+   */
+  
    for(auto const& [type, table] : all_tables) {
       out << std::format("{}{:<{}} {}();\n", my_indent(2), type, max_type_length, table);
       }

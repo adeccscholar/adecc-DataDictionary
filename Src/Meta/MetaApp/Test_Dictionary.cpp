@@ -140,11 +140,11 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(6, "StreetNumber", "StreetNumber", "varchar", 10, 0, false, false, "", "", "", "house number with addition for this address")
       .AddAttribute(7, "Country", "Country", "integer", 0, 0, true, false, "", "", "", "ID of the country for the address, key attribute from the Countries entity")
 
-      .AddReference("refAddress2Person", EMyReferenceType::composition, "Person", "residential address", "1 : n", { }, "part of- relationship from a person to the residential addresses", { {1,1} })
-      .AddReference("refAddress2AddressType", EMyReferenceType::range, "AddressTypes", "has values", "1 : n", { 2 }, "range value to extent the relationship of a person to an address", { {2,1} })
-      .AddReference("refAddress2Countries", EMyReferenceType::assoziation, "Countries", "belongs to", "1 : n", { 2 }, "key ID to the associated entity of Countries, where this address is located", { {7,1} })
+      .AddReference("Address2Person", EMyReferenceType::composition, "Person", "residential address", "1 : n", { }, "part of- relationship from a person to the residential addresses", { {1,1} })
+      .AddReference("Address2AddressType", EMyReferenceType::range, "AddressTypes", "has values", "1 : n", { 2 }, "range value to extent the relationship of a person to an address", { {2,1} })
+      .AddReference("Address2Countries", EMyReferenceType::assoziation, "Countries", "belongs to", "1 : n", { 2 }, "key ID to the associated entity of Countries, where this address is located", { {7,1} })
 
-      .AddIndex("idx_Address_City_Street", EMyIndexType::undefined, "access path to search for city / street combinations in addresses", { { 4, true }, { 5, true } });
+      .AddIndex("Address_City_Street", EMyIndexType::undefined, "access path to search for city / street combinations in addresses", { { 4, true }, { 5, true } });
       ;
 
    dictionary.AddTable("AddressTypes", EMyEntityType::range, "AddressTypes", "dbo", "AddressTypes", "myCorporate", "System\\Corporate", "SQL", "domain / range of values for address types, this is an extension of the relationship between persons and addresses.")
@@ -155,7 +155,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(5, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information for this AddressType, not used in application")
       .AddAttribute(6, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of address type to a system value (cannot be changed as it is used directly by the program)")
 
-      .AddIndex("uk_AddressType_Denotation", EMyIndexType::key, "unique / representative denotation for an addresstye as key canditate", { { 3, true } })
+      .AddIndex("AddressType_Denotation", EMyIndexType::key, "unique / representative denotation for an addresstye as key canditate", { { 3, true } })
  
       .AddRangeValue("INSERT INTO AddressTypes (ID, Denotation, Abbreviation, Description, UrgentValue) VALUES\n"
                      "    (1, 'Hauptadresse', 'HA', 'Hauptadresse für die Anwendung', 1), \n"
@@ -174,12 +174,12 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(6, "BankOwner", "BankOwner", "varchar", 27, 0, false, false, "", "", "", "optionally the name of the owner of the bank details, if this differs from the assigned person")
       .AddAttribute(7, "Country", "Country", "integer", 0, 0, false, false, "", "", "", "ID of the country for the banking entity, key attribute from the Countries entity")
 
-      .AddReference("refBanking2Person", EMyReferenceType::composition, "Person", "owns", "1 : n", { }, "part of relationship from a banking account to the person who own it", { {1,1} })
-      .AddReference("refBanking2Type", EMyReferenceType::range, "BankingTypes", "has values", "1 : n", { 2 }, "range value to extent the relationship of a person to an banking account", { {2,1} })
-      .AddReference("refBanking2Countries", EMyReferenceType::assoziation, "Countries", "belongs to", "1 : n", { 2 }, "key ID to the associated entity of Countries, where bank who manage this account is located", { {7,1} })
+      .AddReference("Banking2Person", EMyReferenceType::composition, "Person", "owns", "1 : n", { }, "part of relationship from a banking account to the person who own it", { {1,1} })
+      .AddReference("Banking2Type", EMyReferenceType::range, "BankingTypes", "has values", "1 : n", { 2 }, "range value to extent the relationship of a person to an banking account", { {2,1} })
+      .AddReference("Banking2Countries", EMyReferenceType::assoziation, "Countries", "belongs to", "1 : n", { 2 }, "key ID to the associated entity of Countries, where bank who manage this account is located", { {7,1} })
 
-      .AddIndex("idx_Banking_IBAN", EMyIndexType::undefined, "access path to search a specific IBAN account number in data", { { 4, true } })
-      .AddIndex("idx_Banking_BIC", EMyIndexType::undefined, "access path to search a specific BIC in data", { { 5, true } })
+      .AddIndex("Banking_IBAN", EMyIndexType::undefined, "access path to search a specific IBAN account number in data", { { 4, true } })
+      .AddIndex("Banking_BIC", EMyIndexType::undefined, "access path to search a specific BIC in data", { { 5, true } })
 
       ;
 
@@ -191,7 +191,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(5, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information for this type of banking, not used in application")
       .AddAttribute(6, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of banking type to a system value (cannot be changed as it is used directly by the program)")
 
-      .AddIndex("uk_BankingTypes_Denotation", EMyIndexType::key, "unique / representative denotation for an banking type as key canditate for this entity", { { 2, true } })
+      .AddIndex("BankingTypes_Denotation", EMyIndexType::key, "unique / representative denotation for an banking type as key canditate for this entity", { { 2, true } })
 
       .AddRangeValue("INSERT INTO BankingTypes (ID, Denotation, Abbreviation, Description, UrgentValue) VALUES\n"
                      "    (1, 'Hauptkonto', 'HK', 'Hauptkonto für die Personen in der Anwendung', 1)")
@@ -211,8 +211,8 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(10, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information for this country, not used in application")
       .AddAttribute(11, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of country to a system value (cannot be changed as it is used directly by the program)")
 
-      .AddIndex("uk_Countries_Denotation", EMyIndexType::key, "unique / representative official name of the country as key canditate for this entity", { { 2, true } })
-      .AddIndex("uk_Countries_ISOCode", EMyIndexType::key, "unique / representative official iso code of the country as key canditate for this entity", { { 6, true } })
+      .AddIndex("Countries_Denotation", EMyIndexType::key, "unique / representative official name of the country as key canditate for this entity", { { 2, true } })
+      .AddIndex("Countries_ISOCode", EMyIndexType::key, "unique / representative official iso code of the country as key canditate for this entity", { { 6, true } })
 
       .AddPostConditions("GO") // SQL Server required a new stack of statements before creating a function
       .AddPostConditions("CREATE FUNCTION [dbo].[Country_Dialing] (@id AS INTEGER) RETURNS VARCHAR(10)\n"
@@ -236,10 +236,10 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(5, "Officer", "Officer", "integer", 0, 0, false, false, "", "", "", "person responsible / head of this department (association with the employys entity)")
       .AddAttribute(6, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "free notes to record information that is not used in the program")
 
-      .AddReference("refDepartments2Employee", EMyReferenceType::assoziation, "Employees", "responsible", "n : 1", { 9 }, "assoziation between the department to employee who is the responsible officer for this", { {5,1} })
+      .AddReference("Departments2Employee", EMyReferenceType::assoziation, "Employees", "responsible", "n : 1", { 9 }, "assoziation between the department to employee who is the responsible officer for this", { {5,1} })
 
-      .AddIndex("uk_Departments_Denotation", EMyIndexType::key, "unique / representative denotation forthe department as key canditate for this entity", { { 2, true } })
-      .AddIndex("idx_Departments_Abbr", EMyIndexType::undefined, "search pass for abbreviations of departments", { { 3, true } })
+      .AddIndex("Departments_Denotation", EMyIndexType::key, "unique / representative denotation forthe department as key canditate for this entity", { { 2, true } })
+      .AddIndex("Departments_Abbr", EMyIndexType::undefined, "search pass for abbreviations of departments", { { 3, true } })
 
       ;
 
@@ -259,17 +259,17 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(13, "SocialNummer", "SocialNummer", "varchar", 20, 0, true, false, "", "", "", "social insurance number of the employee")
       .AddAttribute(14, "Active", "Active", "bool", 0, 0, false, false, "", "", "[IIF(EndOfJob IS NULL OR EndOfJob >= GETDATE(), 1, 0)]", "calculated boolean value indicating whether the person is active in the company")
 
-      .AddReference("refEmployees2Person", EMyReferenceType::generalization, "Person", "is-a", "1 : 1", { 9 }, "generalization from an employee to a person (is-a relationship)", { {1,1} })
-      .AddReference("refEmployees2SalaryType", EMyReferenceType::range, "SalaryType", "has values", "n : 1", { 2 }, "range values as domain for the attribute SalaryType (inside this SalaryBase)", { {4,1} })
-      .AddReference("refEmployees2TaxClass", EMyReferenceType::range, "TaxClasses", "has values", "n : 1", { 2 }, "range value as domain for the attribute TaxClass", { {5,1} })
-      .AddReference("refEmployees2ReasonDeparture", EMyReferenceType::range, "ReasonDeparture", "separation because", "n : 1", { 2 }, "range value as domain for the reason for departure of the employee", { {8,1} })
-      .AddReference("refEmployees2JobPositions", EMyReferenceType::range, "JobPositions", "holds", "n : 1", { 2 }, "range value as domain for this attribute, possible jobpositions in company", { {9,1} })
-      .AddReference("refEmployees2Department", EMyReferenceType::assoziation, "Departments", "works in", "n : 1", { 2 }, "assoziations between an employee to the department where she/he work", { {12,1} })
+      .AddReference("Employees2Person", EMyReferenceType::generalization, "Person", "is-a", "1 : 1", { 9 }, "generalization from an employee to a person (is-a relationship)", { {1,1} })
+      .AddReference("Employees2SalaryType", EMyReferenceType::range, "SalaryType", "has values", "n : 1", { 2 }, "range values as domain for the attribute SalaryType (inside this SalaryBase)", { {4,1} })
+      .AddReference("Employees2TaxClass", EMyReferenceType::range, "TaxClasses", "has values", "n : 1", { 2 }, "range value as domain for the attribute TaxClass", { {5,1} })
+      .AddReference("Employees2ReasonDeparture", EMyReferenceType::range, "ReasonDeparture", "separation because", "n : 1", { 2 }, "range value as domain for the reason for departure of the employee", { {8,1} })
+      .AddReference("Employees2JobPositions", EMyReferenceType::range, "JobPositions", "holds", "n : 1", { 2 }, "range value as domain for this attribute, possible jobpositions in company", { {9,1} })
+      .AddReference("Employees2Department", EMyReferenceType::assoziation, "Departments", "works in", "n : 1", { 2 }, "assoziations between an employee to the department where she/he work", { {12,1} })
 
-      .AddIndex("uk_Employees_PersonNumber", EMyIndexType::key, "unique personal number of a employee in company (key canditate)", { { 3, true } })
-      .AddIndex("uk_Employees_SocialNumber", EMyIndexType::key, "extern unique number of an employee (key canditate)", { { 9, true } })
-      .AddIndex("idx_Employees_JobSpec", EMyIndexType::undefined, "access path to search for informations about job specifications", { { 7, true } })
-      .AddIndex("idx_Employees_Active", EMyIndexType::undefined, "access path to search / filter all active employees", { { 10, true } })
+      .AddIndex("Employees_PersonNumber", EMyIndexType::key, "unique personal number of a employee in company (key canditate)", { { 3, true } })
+      .AddIndex("Employees_SocialNumber", EMyIndexType::key, "extern unique number of an employee (key canditate)", { { 9, true } })
+      .AddIndex("Employees_JobSpec", EMyIndexType::undefined, "access path to search for informations about job specifications", { { 7, true } })
+      .AddIndex("Employees_Active", EMyIndexType::undefined, "access path to search / filter all active employees", { { 10, true } })
 
       ;
 
@@ -283,7 +283,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(7, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information for this type of family status, not used in application")
       .AddAttribute(8, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of phone type to a system value (cannot be changed as it is used directly by the program)")
 
-      .AddIndex("uk_FamilyStatus_Denotation", EMyIndexType::key, "unique / representative denotation for a family status as key canditate for this entity", { { 2, true } })
+      .AddIndex("FamilyStatus_Denotation", EMyIndexType::key, "unique / representative denotation for a family status as key canditate for this entity", { { 2, true } })
 
       .AddRangeValue("INSERT INTO FamilyStatus (ID, Denotation, Abbreviation, Description, Coupled, NeedDate, UrgentValue) VALUES\n"
                      "    (0, 'unbekannt', 'kA', 'unbekannt oder keine Angabe', 0, 0, 1), \n"
@@ -304,7 +304,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(  6, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information for this type of family status, not used in application")
       .AddAttribute(  7, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of family type to a system value (cannot be changed as it is used directly by the program)")
 
-      .AddIndex("uk_FamilyTypes_Denotation", EMyIndexType::key, "unique / representative denotation for a family type (choosen gender) as key canditate for this entity", { { 2, true } })
+      .AddIndex("FamilyTypes_Denotation", EMyIndexType::key, "unique / representative denotation for a family type (choosen gender) as key canditate for this entity", { { 2, true } })
 
       .AddRangeValue("INSERT INTO FamilyTypes (ID, Denotation, Abbreviation, Description, UrgentValue) VALUES\n"
                      "    (1, 'Mann', 'M', 'Person mit männlichem Geschlecht', 1), \n"
@@ -329,9 +329,9 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(8, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information for this type of form of address, not used in application")
       .AddAttribute(9, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of form of address type to a system value (cannot be changed as it is used directly by the program)")
 
-      .AddIndex("uk_FormOfAddress_Denotation", EMyIndexType::key, "unique / representative denotation for a form of address", { { 2, true } })
+      .AddIndex("FormOfAddress_Denotation", EMyIndexType::key, "unique / representative denotation for a form of address", { { 2, true } })
 
-      .AddReference("refFormOfAddress2Type", EMyReferenceType::assoziation, "FamilyTypes", "represent", "1 : n", { 2 }, "assoziation between a form of address and a familiy type which is represent", { {5,1} })
+      .AddReference("FormOfAddress2Type", EMyReferenceType::assoziation, "FamilyTypes", "represent", "1 : n", { 2 }, "assoziation between a form of address and a familiy type which is represent", { {5,1} })
  
       .AddRangeValue("INSERT INTO FormOfAddress (ID, Denotation, Abbreviation, Description, TypeSpec, Salutation, Valediction, UrgentValue) VALUES\n"
                      "    (1, 'Herr', 'Hr', 'Anredesteuerung für Herr', 1, 'Sehr geehrter Herr', 'Mit freundlichen Grüßen', 1), \n"
@@ -345,10 +345,10 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(2, "InternetType", "InternetType", "integer", 0, 0, true, true, "", "", "", "type of internet connection data (value range from InternetType as foreign key, extension to 1:n relationship))")
       .AddAttribute(3, "Adresse", "Adresse", "varchar", 100, 0, true, false, "", "", "", "internet address for this connection, possible to split the protocol to the value table InternetTypes")
 
-      .AddReference("refInternet2Person", EMyReferenceType::composition, "Person", "owns", "1 : n", { }, "part of relationship from an internet connection to the person who own it", { {1,1} })
-      .AddReference("refInternet2Type", EMyReferenceType::range, "InternetTypes", "has values", "1 : n", { 2 }, "range value to extent the relationship of a person to an internet connection", { {2,1} })
+      .AddReference("Internet2Person", EMyReferenceType::composition, "Person", "owns", "1 : n", { }, "part of relationship from an internet connection to the person who own it", { {1,1} })
+      .AddReference("Internet2Type", EMyReferenceType::range, "InternetTypes", "has values", "1 : n", { 2 }, "range value to extent the relationship of a person to an internet connection", { {2,1} })
 
-      .AddIndex("idxInternet_Address", EMyIndexType::undefined, "access path to seach a address of internet connection", { { 3, true } })
+      .AddIndex("Internet_Address", EMyIndexType::undefined, "access path to seach a address of internet connection", { { 3, true } })
       ;
 
    dictionary.AddTable("InternetTypes", EMyEntityType::range, "InternetTypes", "dbo", "InternetTypes", "myCorporate", "System\\Corporate", "SQL", "domain / range of values for internet connection types, this is an extension of the relationship between persons and internet connections.")
@@ -360,7 +360,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(6, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information for this type of internet connection, not used in application")
       .AddAttribute(7, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of internet connection type to a system value (cannot be changed as it is used directly by the program)")
 
-      .AddIndex("uk_InternetTypes_Denotation", EMyIndexType::key, "unique / representative denotation for this internet type", { { 2, true } })
+      .AddIndex("InternetTypes_Denotation", EMyIndexType::key, "unique / representative denotation for this internet type", { { 2, true } })
 
       .AddRangeValue("INSERT INTO InternetTypes (ID, Denotation, Abbreviation, Description, Prefix, UrgentValue) VALUES\n"
                      "    (1, 'Internet', 'HTTP', 'Die Homepage einer Person', 'http://', 1), \n"
@@ -379,9 +379,9 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(6, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information for this type of job position, not used in application")
       .AddAttribute(7, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of job position to a system value (cannot be changed as it is used directly by the program)")
 
-      .AddReference("refJobPosition2SalaryType", EMyReferenceType::range, "SalaryType", "is in this", "n : 1", { 2 }, "range value which descripe which kind of salary this JobPositions use", { {5,1} })
+      .AddReference("JobPosition2SalaryType", EMyReferenceType::range, "SalaryType", "is in this", "n : 1", { 2 }, "range value which descripe which kind of salary this JobPositions use", { {5,1} })
 
-      .AddIndex("uk_JobPositions_Denotation", EMyIndexType::key, "unique / representative denotation for this position in job", { { 2, true } })
+      .AddIndex("JobPositions_Denotation", EMyIndexType::key, "unique / representative denotation for this position in job", { { 2, true } })
 
       ;
 
@@ -396,10 +396,10 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(8, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information for this tperson, not used in application")
       .AddAttribute(9, "FullName", "FullName", "varchar", 60, 0, false, false, "", "", "FirstName + ' ' + Name", "calculated field for displaying the full name for use in the program, for example, if a person is to be selected")
 
-      .AddReference("refPerson2FormOfAddress", EMyReferenceType::range, "FormOfAddress", "has values", "1 : n", { 2 }, "range value to extent the relationship of a person to a form of address", { {4,1} })
-      .AddReference("refPerson2FamilyStatus", EMyReferenceType::range, "FamilyStatus", "has values", "1 : n", { 2 }, "range value to extent the relationship of a person to a family status", { {5,1} })
+      .AddReference("Person2FormOfAddress", EMyReferenceType::range, "FormOfAddress", "has values", "1 : n", { 2 }, "range value to extent the relationship of a person to a form of address", { {4,1} })
+      .AddReference("Person2FamilyStatus", EMyReferenceType::range, "FamilyStatus", "has values", "1 : n", { 2 }, "range value to extent the relationship of a person to a family status", { {5,1} })
 
-      .AddIndex("idx_Person_Name_Firstname", EMyIndexType::undefined, "access path to search for name and / or firstname in a person", { { 2, true }, { 3, true } })
+      .AddIndex("Person_Name_Firstname", EMyIndexType::undefined, "access path to search for name and / or firstname in a person", { { 2, true }, { 3, true } })
       ;
 
    dictionary.AddTable("Phone", EMyEntityType::table, "Phone", "dbo", "Phone", "myCorporate", "System\\Corporate", "SQL", "phone connections of persons (part of relationship)")
@@ -411,11 +411,11 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(6, "DialingNational", "DialingNational", "varchar", 25, 0, false, false, "", "", "AreaCode + REPLACE(REPLACE(CallNumber, ' ', ''), '-', '')", "complete telephone number to be dialed in the national network as computed field")
       .AddAttribute(7, "DialingInternational", "DialingInternational", "varchar", 30, 0, false, false, "", "", "[[dbo].[Country_Dialing](Country)+SUBSTRING(AreaCode, 2, LEN(AreaCode))+CallNumber]", "complete telephone number to be dialed in the international network as computed field")
 
-      .AddReference("refPhone2Person", EMyReferenceType::composition, "Person", "owns", "1 : n", { 2 }, "part of relationship from a phone number to the person who own it", { {1,1} })
-      .AddReference("refPhone2Type", EMyReferenceType::range, "PhonesTypes", "has values", "1 : n", { 2 }, "range value to extent the relationship of a person to a phone number", { {2,1} })
-      .AddReference("refPhone2Countries", EMyReferenceType::assoziation, "Countries", "belongs to", "1 : n", { }, "key ID to the associated entity of Countries, where phone connection located", { {5,1} })
+      .AddReference("Phone2Person", EMyReferenceType::composition, "Person", "owns", "1 : n", { 2 }, "part of relationship from a phone number to the person who own it", { {1,1} })
+      .AddReference("Phone2Type", EMyReferenceType::range, "PhonesTypes", "has values", "1 : n", { 2 }, "range value to extent the relationship of a person to a phone number", { {2,1} })
+      .AddReference("Phone2Countries", EMyReferenceType::assoziation, "Countries", "belongs to", "1 : n", { }, "key ID to the associated entity of Countries, where phone connection located", { {5,1} })
 
-      .AddIndex("idx_Phone_Number", EMyIndexType::undefined, "access path to search a phone number", { { 3, true }, { 4, true } })
+      .AddIndex("Phone_Number", EMyIndexType::undefined, "access path to search a phone number", { { 3, true }, { 4, true } })
       ;
 
    dictionary.AddTable("PhonesTypes", EMyEntityType::range, "PhoneTypes", "dbo", "PhonesTypes", "myCorporate", "System\\Corporate", "SQL", "domain / range of values for phone types, this is an extension of the relationship between persons and phone.")
@@ -426,7 +426,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(5, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information for this type of banking, not used in application")
       .AddAttribute(6, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of phone type to a system value (cannot be changed as it is used directly by the program)")
 
-      .AddIndex("uk_PhonesTypes_Denotation", EMyIndexType::key, "unique / representative denotation for thistype of phone connections", { { 2, true } })
+      .AddIndex("PhonesTypes_Denotation", EMyIndexType::key, "unique / representative denotation for thistype of phone connections", { { 2, true } })
 
       .AddRangeValue("INSERT INTO PhoneTypes (ID, Denotation, Abbreviation, Description, UrgentValue) VALUES\n"
                      "    (1, 'Telefon', 'Tel', 'Telefonnummer zu einer Person', 1), \n"
@@ -443,7 +443,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(5, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information for the reason of the departure, not used in the application")
       .AddAttribute(6, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of reason of departure to a system value (cannot be changed as it is used directly by the program)")
 
-      .AddIndex("uk_ReasonDeparture_Denotation", EMyIndexType::key, "unique / representative denotation for this reason of departure", { { 2, true } })
+      .AddIndex("ReasonDeparture_Denotation", EMyIndexType::key, "unique / representative denotation for this reason of departure", { { 2, true } })
 
       .AddRangeValue("INSERT INTO ReasonDeparture (ID, Denotation, Abbreviation, Description, UrgentValue) VALUES\n"
                      "    (1, 'Kündigung', 'Kü', 'Die Person hat freiwillig beschlossen, das Unternehmen zu verlassen (Resignation).', 1), \n"
@@ -461,7 +461,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(5, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information for the reason of the non working times / idle times, not used in the application")
       .AddAttribute(6, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of reason of departure to a system value (cannot be changed as it is used directly by the program)")
 
-      .AddIndex("uk_ReasonNonWorking_Denotation", EMyIndexType::key, "unique / representative denotation for this reason of idle time", { { 2, true } })
+      .AddIndex("ReasonNonWorking_Denotation", EMyIndexType::key, "unique / representative denotation for this reason of idle time", { { 2, true } })
 
       .AddRangeValue("INSERT INTO ReasonNonWorking (ID, Denotation, Abbreviation, Description, UrgentValue) VALUES\n"
                      "    (1, 'Urlaub', 'U', 'Die Person hat regulären Urlaub (inklusive eventuelle Tage Resturlaub', 1), \n"
@@ -479,14 +479,14 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(4, "Description", "Description", "text", 0, 0, false, false, "", "", "", "a longer description for this base to use as hint or for display")
       .AddAttribute(5, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of salary base to a system value (cannot be changed as it is used directly by the program)")
 
-      .AddIndex("uk_SalaryBase_Denotation", EMyIndexType::key, "unique / representative denotation for this base of salary", { { 2, true } })
-      .AddIndex("uk_SalaryBase_Abbreviation", EMyIndexType::key, "unique / representative abbreviation for this base of salary", { { 3, true } })
+      .AddIndex("SalaryBase_Denotation", EMyIndexType::key, "unique / representative denotation for this base of salary", { { 2, true } })
+      .AddIndex("SalaryBase_Abbreviation", EMyIndexType::key, "unique / representative abbreviation for this base of salary", { { 3, true } })
 
       .AddRangeValue("INSERT INTO SalaryBase (ID, Denotation, Abbreviation, Description, UrgentValue) VALUES\n"
-         "    (0, 'ohne', 'f', 'Die Angabe des Gehalts wird ignoriert oder einmalig gezahlt. Kostenloses Praktikum oder Probezeit.', 1), \n"
-         "    (1, 'stündlich', 'h', 'Die Angabe des Gehalts erfolgt auf Stundenbasis. Entspricht meistens dem Arbeitslohn, eventuell mit Zuschlägen.', 1), \n"
-         "    (2, 'täglich', 'd', 'Die Angabe des Gehalts erfolgt auf Tagesbasis. Dieses wird oft für Honorare verwendet.', 1), \n"
-         "    (3, 'monatlich', 'm', 'Die Angabe des Bezugs erfolgt auf Monatsbasis.Das entspricht meistens dem Gehalt bei Angestellten*innen', 1)")
+                     "    (0, 'ohne', 'f', 'Die Angabe des Gehalts wird ignoriert oder einmalig gezahlt. Kostenloses Praktikum oder Probezeit.', 1), \n"
+                     "    (1, 'stündlich', 'h', 'Die Angabe des Gehalts erfolgt auf Stundenbasis. Entspricht meistens dem Arbeitslohn, eventuell mit Zuschlägen.', 1), \n"
+                     "    (2, 'täglich', 'd', 'Die Angabe des Gehalts erfolgt auf Tagesbasis. Dieses wird oft für Honorare verwendet.', 1), \n"
+                     "    (3, 'monatlich', 'm', 'Die Angabe des Bezugs erfolgt auf Monatsbasis.Das entspricht meistens dem Gehalt bei Angestellten*innen', 1)")
 
       ;
 
@@ -498,7 +498,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(5, "SalaryBase", "SalaryBase", "integer", 0, 0, false, false, "", "", "", "id of the salary base which is used for this type of salary (foreign key from SalaryBase)")
       .AddAttribute(6, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of salary base to a system value (cannot be changed as it is used directly by the program)")
 
-      .AddReference("refSalaryType2SalaryBase", EMyReferenceType::range, "SalaryBase", "has values", "1 : n", { 2 }, "range value for the salary base, used for different kinds of calculations", { {5,1} })
+      .AddReference("SalaryType2SalaryBase", EMyReferenceType::range, "SalaryBase", "has values", "1 : n", { 2 }, "range value for the salary base, used for different kinds of calculations", { {5,1} })
 
       ;
 
@@ -510,8 +510,8 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(5, "Coupled", "Coupled", "bool", 0, 0, true, false, "", "", "", "Indicator whether this tax class applies to married couples or registered civil partnerships")
       .AddAttribute(6, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of tax classes to a system value (cannot be changed as it is used directly by the program)")
 
-      .AddIndex("uk_TaxClasses_Denotation", EMyIndexType::key, "unique / representative official denotation of the tax class as key canditate for this entity", { { 2, true } })
-      .AddIndex("uk_TaxClasses_Abbreviation", EMyIndexType::key, "unique / representative official abbreviation of the tax class as key canditate for this entity", { { 3, true } })
+      .AddIndex("TaxClasses_Denotation", EMyIndexType::key, "unique / representative official denotation of the tax class as key canditate for this entity", { { 2, true } })
+      .AddIndex("TaxClasses_Abbreviation", EMyIndexType::key, "unique / representative official abbreviation of the tax class as key canditate for this entity", { { 3, true } })
 
       .AddRangeValue("INSERT INTO TaxClasses (ID, Denotation, Abbreviation, Description, Coupled, UrgentValue) VALUES\n"
                      "    (1, 'Steuerklasse 1', 'I', 'Dies ist die Standardsteuerklasse für alleinstehende Personen ohne Kinder.', 0, 1), \n"
@@ -531,7 +531,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(3, "Share", "Share", "integer", 0, 0, true, false, "", "", "", "share of the holiday (addition for later extension, e.g. holy eve as a half holiday)")
       .AddAttribute(4, "Description", "Description", "text", 0, 0, false, false, "", "", "", "additional, more detailed description of the holiday. can use as hint in programm or reports")
 
-      .AddReference("refWD_Holidays_Workdays", EMyReferenceType::assoziation, "WD_Workdays", "is free", "1 : 1", { }, "assoziation of a holiday to the working days table", { {1,1} })
+      .AddReference("WD_Holidays_Workdays", EMyReferenceType::assoziation, "WD_Workdays", "is free", "1 : 1", { }, "assoziation of a holiday to the working days table", { {1,1} })
 
       .AddPostConditions("GO") // SQL Server required a new stack of statements before creating a function
       .AddPostConditions("CREATE FUNCTION [dbo].[GetIsHoliday](@caldate AS DATE) RETURNS INTEGER\n"
@@ -554,8 +554,8 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 10, 0, true, false, "", "", "", "unique abbreviation of a month in the domain, used in overviews and reports")
       .AddAttribute(4, "Quarter", "Quarter", "unsigned", 0, 0, true, false, "BETWEEN 1 AND 4", "", "", "unsigned value with the number auf the quarter, values in 1 - 4")
 
-      .AddIndex("uk_WD_Months_Denotation", EMyIndexType::key, "unique / representative denotation for this month, use in selections or to display", { { 2, true } })
-      .AddIndex("uk_WD_Months_Abbreviation", EMyIndexType::key, "unique / representative abbreviation for this month, use in selections or to display", { { 3, true } })
+      .AddIndex("WD_Months_Denotation", EMyIndexType::key, "unique / representative denotation for this month, use in selections or to display", { { 2, true } })
+      .AddIndex("WD_Months_Abbreviation", EMyIndexType::key, "unique / representative abbreviation for this month, use in selections or to display", { { 3, true } })
 
       .AddPostConditions("GO") // SQL Server required a new stack of statements before creating a function
       .AddPostConditions("CREATE FUNCTION [dbo].[GetQuarterOfMonth](@id AS INTEGER) RETURNS VARCHAR(10)\n"
@@ -593,10 +593,10 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(4, "Reason", "Reason", "integer", 0, 0, true, false, "BETWEEN 0 AND 6", "", "", "reason of non working time, there exist a table, but values are interpreted through the applications")
       .AddAttribute(5, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "free notices to the non-working time")
 
-      .AddReference("refNonWorking2Employee", EMyReferenceType::composition, "Employees", "idled", "1 : n", { }, "part of relationship to idle times / times of non working", { {1,1} })
-      .AddReference("refNonWorking2Workday_Start", EMyReferenceType::assoziation, "WD_Workdays", "is at", "1 : n", { }, "assoziation between the non-working time and the working days for the begin", { {2,1} })
-      .AddReference("refNonWorking2Workday_Finishing", EMyReferenceType::assoziation, "WD_Workdays", "is at", "1 : n", { }, "assoziation between the non-working time and the working days for the end", { {3,1} })
-      .AddReference("refNonWorking2Reason", EMyReferenceType::range, "ReasonNonWorking", "has values", "1 : n", { 2 }, "range value who describe the reason for the idle time", { {4,1} })
+      .AddReference("NonWorking2Employee", EMyReferenceType::composition, "Employees", "idled", "1 : n", { }, "part of relationship to idle times / times of non working", { {1,1} })
+      .AddReference("NonWorking2Workday_Start", EMyReferenceType::assoziation, "WD_Workdays", "is at", "1 : n", { }, "assoziation between the non-working time and the working days for the begin", { {2,1} })
+      .AddReference("NonWorking2Workday_Finishing", EMyReferenceType::assoziation, "WD_Workdays", "is at", "1 : n", { }, "assoziation between the non-working time and the working days for the end", { {3,1} })
+      .AddReference("NonWorking2Reason", EMyReferenceType::range, "ReasonNonWorking", "has values", "1 : n", { 2 }, "range value who describe the reason for the idle time", { {4,1} })
 
       ;
 
@@ -606,8 +606,8 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(3, "Abbreviation", "Abbreviation", "varchar", 5, 0, true, false, "", "", "", "unique abbreviation for this weekday ")
       .AddAttribute(4, "Workday", "Workday", "bool", 0, 0, true, false, "", "", "", "boolean value to control the work time, true if this weekday usual a workday")
 
-      .AddIndex("uk_WD_Weekdays_Denotation", EMyIndexType::key, "unique / representative denotation for this weekday, use in selections or to display", { { 2, true } })
-      .AddIndex("uk_WD_Weekdays_Abbreviation", EMyIndexType::key, "unique / representative abbreviation for this weekdays, use in selections or to display", { { 3, true } })
+      .AddIndex("WD_Weekdays_Denotation", EMyIndexType::key, "unique / representative denotation for this weekday, use in selections or to display", { { 2, true } })
+      .AddIndex("WD_Weekdays_Abbreviation", EMyIndexType::key, "unique / representative abbreviation for this weekdays, use in selections or to display", { { 3, true } })
 
       .AddRangeValue("INSERT INTO WD_Weekdays (ID, Denotation, Abbreviation, Workday) VALUES\n"
                      "    (0, 'Montag', 'Mo', 1), \n"
@@ -620,13 +620,13 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
       .AddPostConditions("GO") // SQL Server required a new stack of statements before creating a function
       .AddPostConditions("CREATE FUNCTION [dbo].[GetIsWorkday](@id AS INTEGER) RETURNS SMALLINT\n"
-         "BEGIN\n"
-         "   DECLARE @retval SMALLINT;\n"
-         "   SELECT @retval = Workday\n"
-         "   FROM dbo.WD_Weekdays\n"
-         "   WHERE ID = @id;\n"
-         "   RETURN @retval;\n"
-         "END")
+                         "BEGIN\n"
+                         "   DECLARE @retval SMALLINT;\n"
+                         "   SELECT @retval = Workday\n"
+                         "   FROM dbo.WD_Weekdays\n"
+                         "   WHERE ID = @id;\n"
+                         "   RETURN @retval;\n"
+                         "END")
       .AddPostConditions("GO") // SQL Server required a new stack of statements before creating a function
 
       .AddCleanings("DROP FUNCTION [dbo].[GetIsWorkday]")
@@ -644,10 +644,10 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(8, "CalendarQuarter", "CalendarQuarter", "integer", 0, 0, true, false, "", "", "[[dbo].[GetQuarterOfMonth](MONTH(CalendarDay))]", "calculated field, use relationship to WD_Months and the function GetQuarterOfMonth to get the quarter")
       .AddAttribute(9, "Workday", "Workday", "bool", 0, 0, true, false, "", "", "[IIF(dbo.GetIsWorkday(CalendarWeekday) = 1 AND dbo.GetIsHoliday(CalendarDay) = 0, 1, 0)]", "boolean value which determin the day as work day, using functions of WD_Weekdays and WD_Holidays")
 
-      .AddReference("refWD_Workdays2WeekDay", EMyReferenceType::range, "WD_Weekdays", "has values", "1 : n", { 2 }, "range value for the calendar weekday", { {2,1} })
-      .AddReference("refWD_Workdays2Month", EMyReferenceType::range, "WD_Months", "has values", "1 : n", { 2 }, "range value for the calendar month", { {5,1} })
+      .AddReference("WD_Workdays2WeekDay", EMyReferenceType::range, "WD_Weekdays", "has values", "1 : n", { 2 }, "range value for the calendar weekday", { {2,1} })
+      .AddReference("WD_Workdays2Month", EMyReferenceType::range, "WD_Months", "has values", "1 : n", { 2 }, "range value for the calendar month", { {5,1} })
  
-      .AddIndex("idxWD_Workdays_Years_Month", EMyIndexType::undefined, "access path for search year and month for reports", { { 4, true }, { 5, true } })
+      .AddIndex("WD_Workdays_Years_Month", EMyIndexType::undefined, "access path for search year and month for reports", { { 4, true }, { 5, true } })
 
       ;
 
@@ -659,7 +659,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(5, "ProcessedAt", "ProcessedAt", "datetime", 0, 0, false, false, "", "", "", "time at which this data record was settled and posted")
       .AddAttribute(6, "DayOfWork", "DayOfWork", "date", 0, 0, false, false, "", "", "{convert(date, StartingTime)}", "calculated day to the timepoint where work started")
 
-      .AddReference("refWorkTime2Employee", EMyReferenceType::composition, "Employees", "worked", "1 : n", { }, "part of relationship of work times to the employees", { {1,1} })
+      .AddReference("WorkTime2Employee", EMyReferenceType::composition, "Employees", "worked", "1 : n", { }, "part of relationship of work times to the employees", { {1,1} })
       ;
 
 
@@ -705,9 +705,9 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(2, "CustID", "CustID", "integer", 0, 0, true, false, "", "", "", "Customer identification number of the contact associated customer.")
       .AddAttribute(3, "CustLiaison", "CustLiaison", "integer", 0, 0, true, false, "", "", "", "liaision for this contact person as range value (from table CustLiasion)")
 
-      .AddReference("refContacts2Person", EMyReferenceType::generalization, "Person", "", "", { 9 }, "generalization of a contact to a person (is-a relationship)", { {1,1} })
-      .AddReference("refContacts2Customer", EMyReferenceType::composition, "Customers", "", "1 : n", { }, "part of relationship of the contact to a customer", { {2,1} })
-      .AddReference("refContacts2Liaison", EMyReferenceType::range, "CustLiaison", "has values", "n : 1", { 2 }, "range values as domain for the attribute CustLiaison", { {3,1} })
+      .AddReference("Contacts2Person", EMyReferenceType::generalization, "Person", "", "", { 9 }, "generalization of a contact to a person (is-a relationship)", { {1,1} })
+      .AddReference("Contacts2Customer", EMyReferenceType::composition, "Customers", "", "1 : n", { }, "part of relationship of the contact to a customer", { {2,1} })
+      .AddReference("Contacts2Liaison", EMyReferenceType::range, "CustLiaison", "has values", "n : 1", { 2 }, "range values as domain for the attribute CustLiaison", { {3,1} })
 
       ;
 
@@ -719,8 +719,8 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(5, "IsLegalEntrity", "IsLegalEntrity", "bool", 0, 0, true, false, "", "", "", "indicates whether the legal form constitutes a legal entity (true/false)")
       .AddAttribute(6, "UrgentValue", "UrgentValue", "integer", 0, 0, false, false, "", "", "", "indicates whether the legal form has urgent significance (true/false)")
 
-      .AddIndex("uk_CorporateForm_Donation", EMyIndexType::key, "unique / representative denotation for this corporate form", { { 2, true } })
-      .AddIndex("uk_CorporateForm_Abbreviation", EMyIndexType::key, "unique / representative abbreviation for this corporate form", { { 1, true } })
+      .AddIndex("CorporateForm_Donation", EMyIndexType::key, "unique / representative denotation for this corporate form", { { 2, true } })
+      .AddIndex("CorporateForm_Abbreviation", EMyIndexType::key, "unique / representative abbreviation for this corporate form", { { 1, true } })
 
       .AddRangeValue("INSERT INTO CorporateForm (ID, Denotation, Abbreviation, Description, IsLegalEntrity, UrgentValue) VALUES\n"
                      "    (1, 'Gesellschaft mit beschränkter Haftung', 'GmbH', 'Eine GmbH ist eine Kapitalgesellschaft, bei der die Haftung der Gesellschafter auf ihre Einlagen beschränkt ist.', 1, 1), \n"
@@ -742,7 +742,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(5, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information of this classification of a customer, not used in the application")
       .AddAttribute(6, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of this classification of a customer to a system value (cannot be changed as it is used directly by the program)")
 
-      .AddIndex("uk_CustClass_Donation", EMyIndexType::key, "unique / representative denotation for this customers classification", { { 2, true } })
+      .AddIndex("CustClass_Donation", EMyIndexType::key, "unique / representative denotation for this customers classification", { { 2, true } })
 
       .AddRangeValue("INSERT INTO CustClassification (ID, Denotation, Abbreviation, Description, UrgentValue) VALUES\n"
                      "    (1, 'Neukunde', 'Neu', 'Ein Kunde, der gerade erst begonnen hat, Geschäfte mit dem Unternehmen zu tätigen und möglicherweise noch nicht viel Erfahrung mit den Produkten oder Dienstleistungen des Unternehmens hat.', 1), \n"
@@ -760,7 +760,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(5, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information of this  liaison to use a contact in a customer, not used in the application")
       .AddAttribute(6, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of this liaison to use a contact in a customer to a system value (cannot be changed as it is used directly by the program)")
 
-      .AddIndex("uk_CustLiaison_Donation", EMyIndexType::key, "unique / representative denotation for this liaison for the contact", { { 2, true } })
+      .AddIndex("CustLiaison_Donation", EMyIndexType::key, "unique / representative denotation for this liaison for the contact", { { 2, true } })
 
       .AddRangeValue("INSERT INTO CustLiaison (ID, Denotation, Abbreviation, Description, UrgentValue) VALUES\n"
                      "    (1, 'Geschäftsführer/in', 'GV', 'Der Geschäftsführer ist die höchste Führungsperson des Kunden und vertritt das Unternehmen. Sie sind für die strategische Ausrichtung, das Management und die langfristige Entwicklung der Geschäftsbeziehung verantwortlich. Der Geschäftsführer trägt die Gesamtverantwortung für den Erfolg des Projekts.', 1), \n"
@@ -777,10 +777,10 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(3, "CustClassification", "CustClassification", "integer", 0, 0, true, false, "", "", "", "classification of this customer as range value (from table CustClassification)")
       .AddAttribute(4, "LegalForm", "LegalForm", "integer", 0, 0, true, false, "", "", "", "legal form of this customer")
 
-      .AddReference("refCustomers2Person", EMyReferenceType::generalization, "Person", "is-a", "1 : 1", { 9 }, "generalization from a custumer to a person (is-a relationship)", { {1,1} })
-      .AddReference("refCustomers2Classification", EMyReferenceType::range, "CustClassification", "has values", "n : 1", { 2 }, "range values as domain for the attribute CustClassification", { {3,1} })
-      .AddReference("refCustomers2Employees_SA", EMyReferenceType::assoziation, "Employees", "works in", "n : 1", { 2 }, "assoziations between an customer to the the employee who act as service agent", { {2,1} })
-      .AddReference("refCustomers2LegalForms", EMyReferenceType::range, "CorporateForm", "has values", "n : 1", { 3 }, "range values as domain for the attribute LegalForms", { {4,1} })
+      .AddReference("Customers2Person", EMyReferenceType::generalization, "Person", "is-a", "1 : 1", { 9 }, "generalization from a custumer to a person (is-a relationship)", { {1,1} })
+      .AddReference("Customers2Classification", EMyReferenceType::range, "CustClassification", "has values", "n : 1", { 2 }, "range values as domain for the attribute CustClassification", { {3,1} })
+      .AddReference("Customers2Employees_SA", EMyReferenceType::assoziation, "Employees", "works in", "n : 1", { 2 }, "assoziations between an customer to the the employee who act as service agent", { {2,1} })
+      .AddReference("Customers2LegalForms", EMyReferenceType::range, "CorporateForm", "has values", "n : 1", { 3 }, "range values as domain for the attribute LegalForms", { {4,1} })
 
       ;
 

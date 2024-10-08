@@ -30,7 +30,7 @@ using namespace std::string_literals;
 void Test(TMyDictionary const& dictionary) {
    std::cout << dictionary.FindDataType("bigint").SourceType() << "\n\n";
 
-   dictionary.FindTable("Berlin").Funktion("ref_test"s, 1u, 3u, 5u, "Berlin"s, 1u, 7u, 6u);
+   // dictionary.FindTable("Berlin").Funktion("ref_test"s, 1u, 3u, 5u, "Berlin"s, 1u, 7u, 6u);
 
    for (auto const& [key, val] : dictionary.DataTypes()) std::cout << key << "\n";
    std::cout << '\n';
@@ -58,7 +58,7 @@ int main() {
       dict_data.Dictionary().IDLPath("D:\\Projekte\\GitHub\\Test_Metadata_Creator\\IDL");
       dict_data.Dictionary().CorbaPath("D:\\Projekte\\GitHub\\Test_Metadata_Creator\\src\\Corba");
 
-      constexpr bool boTest = true;
+      constexpr bool boTest = false;
 
       if(boTest) {
          /*
@@ -74,9 +74,6 @@ int main() {
          dict_data.Dictionary().Test();
          }
       else {
-         dict_data.Dictionary().Test();
-
-
          dict_data.Dictionary().Create_All(std::cout, std::cerr);
          std::cout << "\n\ngenerator finished without error\n";
          }

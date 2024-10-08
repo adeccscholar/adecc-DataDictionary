@@ -19,7 +19,7 @@
 */
 
 #include "DataDictionary.h"
-
+#include "GenerateSQL.h"
 #include "DictionaryHelper.h"
 
 #include <sstream>
@@ -154,54 +154,8 @@ std::string TMyReferences::ReferenceTypeTxt() const {
       }
    }
 
-std::string TMyReferences::SQLRow() const {
-   std::string strSQL;
-   std::ostringstream sList1, sList2;
 
-   TMyTable const& ref = table.Dictionary().FindTable(RefTable());
 
-   sList1 << "(";
-   sList2 << "(";
-   int i = 0;
-   std::ranges::for_each(Values(), [this, &ref, &sList1, &sList2, &i](auto const& row) {
-      sList1 << (i   > 0 ? ", " : "") << table.FindAttribute(row.first).DBName();
-      sList2 << (i++ > 0 ? ", " : "") << ref.FindAttribute(row.second).DBName();
-      });
-   sList1 << ")";
-   sList2 << ")";
-
-   strSQL = "ALTER TABLE "s + table.FullyQualifiedSQLName() + " ADD CONSTRAINT "s + Name() + " FOREIGN KEY "s + sList1.str() + 
-            " REFERENCES "s + ref.FullyQualifiedSQLName() + " "s + sList2.str();
-   return strSQL;
-   }
-
-// TMyIndices
-
-std::string TMyIndices::SQLRow() const {
-   std::ostringstream sSQL;
-   if(IndexType() == EMyIndexType::key) {
-      sSQL << "ALTER TABLE " << table.FullyQualifiedSQLName() << " ADD CONSTRAINT " << Name()
-           << " UNIQUE (";
-      unsigned int i = 0;
-      std::ranges::for_each(Values(), [this, &sSQL, &i](auto const& row) {
-                           sSQL << (i++ > 0 ? ", " : "") << table.FindAttribute(row.first).DBName(); });
-      sSQL << ")";
-      }
-   else {
-      sSQL << "CREATE";
-      switch(IndexType()) {
-         case EMyIndexType::unique:       sSQL << " UNIQUE";       break;
-         case EMyIndexType::clustered:    sSQL << " CLUSTERED";    break;
-         case EMyIndexType::nonclustered: sSQL << " NONCLUSTERED"; break;
-         }      
-      sSQL << " INDEX "s + Name() + " ON " << table.FullyQualifiedSQLName() << " (";
-      unsigned int i = 0;
-      std::ranges::for_each(Values(), [this, &sSQL, &i](auto const& row) {
-                 sSQL << (i++ > 0 ? ", " : "") << table.FindAttribute(row.first).DBName(); });
-      sSQL << ")";
-      }
-   return sSQL.str();
-   }
 
 // TMyTable
 
@@ -294,20 +248,14 @@ std::vector<TMyTable::my_part_of_type> TMyTable::GetPart_ofs(EMyReferenceType re
       return r.RefTable() == Name() && r.ReferenceType() == ref_type;
       };
 
-   // retval for the function
    std::vector<TMyTable::my_part_of_type> parts;
 
-   // traverse the range with all other tables and seek for a composition with this table
    for (auto const& [_, ref_table] : Dictionary().Tables() | std::views::filter([this](auto const& t) { return t.first != Name(); })) {
       auto composed = ref_table.References() | std::views::filter(filter_refs) | std::ranges::to<std::vector>();
    
-      // there should be only 1, otherwise is there an error
-      //if(composed.size() == 1) {
       for(auto & comp_val : composed) {      
-         //auto comp_keys = comp_val.Values() | std::views::transform([](auto const& p) { return p.first; }) | std::ranges::to<std::set>();
          auto comp_keys = std::views::all(comp_val.Values()) | own::views::first  | std::ranges::to<std::set>();
  
-         // seek for primary keys which are NOT in the reference, this are the keys for the composed datatype
          auto filter_prim = [&comp_keys](auto const& attr) { 
             return attr.Primary() && comp_keys.find(attr.ID()) == comp_keys.end(); 
             };
@@ -317,17 +265,14 @@ std::vector<TMyTable::my_part_of_type> TMyTable::GetPart_ofs(EMyReferenceType re
          strTypeName += "_ty";
          std::string strVarName  = "m_" + ref_table.Name();
 
-         // vector with the keys of the composed table which are not part of the reference, part of the retval type
          auto prim_keys = ref_table.Attributes() | std::views::filter(filter_prim)
                                                  | std::views::transform([](auto const& attr) { return attr.ID(); })
                                                  | std::ranges::to<std::vector<size_t>>();
          
-         // swap the referenced values that the first value represented attributes of own table
          auto swapped = comp_val.Values() | std::views::transform([](const auto& pair) {
                                                     return std::make_pair(pair.second, pair.first);
                                                     }) | std::ranges::to<std::vector>();
 
-         // add constructed values to the retval
          parts.emplace_back(std::make_tuple(ref_table, strTypeName, strVarName, prim_keys, swapped));
          }
       }
@@ -528,21 +473,21 @@ TMyDictionary& TMyDictionary::AddDirectory(std::string const& pName, std::string
 
 
 void TMyDictionary::CreateTable(std::string const& strTable, std::ostream& out) const {
-   auto const& table = FindTable(strTable);
-   if(table.EntityType() != EMyEntityType::view) {
-      table.SQL_Create_Table(out);
-      table.SQL_Create_PostConditions(out);
-      table.SQL_Create_Alter_Table(out);
-      table.SQL_Create_Primary_Key(out);
-      table.SQL_Create_Foreign_Keys(out);
-      table.SQL_Create_Unique_Keys(out);
-      table.SQL_Create_Indices(out);
-      table.SQL_Create_RangeValues(out);
+   if (auto const& table = FindTable(strTable); table.EntityType() != EMyEntityType::view) {
+      sql_builder()
+         .WriteCreateTable(table, out)
+         .WriteCreatePostConditions(table, out)
+         .WriteAlterTable(table, out)
+         .WritePrimaryKey(table, out)
+         .WriteForeignKeys(table, out)
+         .WriteUniqueKeys(table, out)
+         .WriteCreateIndices(table, out)
+         .WriteRangeValues(table, out);
       }
    else {
-      table.SQL_Create_View(out);
+      sql_builder()
+         .WriteCreateView(table, out);
       }
-
    }
 
 
@@ -554,14 +499,22 @@ void TMyDictionary::CreateClass(std::string const& strTable, std::ostream& out) 
 
 
 void  TMyDictionary::Create_All(std::ostream& out, std::ostream& err) const {
-   using job_type = std::pair<std::string, std::function<bool(std::ostream&)>>;
+   using job_type = std::pair<std::string, std::function<Generator_SQL const&(std::ostream&)>>;
    static std::vector<job_type> jobs = {
+      /*
+      * using job_type = std::pair<std::string, std::function<bool (std::ostream&)>>;
       job_type { "create_tables.sql"s,      std::bind(&TMyDictionary::Create_SQL_Tables, this, std::placeholders::_1) },
       job_type { "create_additinals.sql"s,  std::bind(&TMyDictionary::Create_SQL_Additionals, this, std::placeholders::_1) },
       job_type { "create_rangevalues.sql"s, std::bind(&TMyDictionary::Create_SQL_RangeValues, this, std::placeholders::_1) },
       job_type { "drop_all.sql"s,           std::bind(&TMyDictionary::SQL_Drop_Tables, this, std::placeholders::_1) },
       job_type { "add_documentation.sql"s,  std::bind(&TMyDictionary::Create_SQL_Documentation, this, std::placeholders::_1) }
-    
+      */
+      job_type { "create_tables.sql"s,      std::bind(&Generator_SQL::WriteSQLTables, &this->sql_builder(), std::placeholders::_1) },
+      job_type { "create_additinals.sql"s,  std::bind(&Generator_SQL::WriteSQLAdditionals, &this->sql_builder(), std::placeholders::_1) },
+      job_type { "create_rangevalues.sql"s, std::bind(&Generator_SQL::WriteSQLRangeValues, &this->sql_builder(), std::placeholders::_1) },
+      job_type { "drop_all.sql"s,           std::bind(&Generator_SQL::WriteSQLDropTables, &this->sql_builder(), std::placeholders::_1) },
+      job_type { "add_documentation.sql"s,  std::bind(&Generator_SQL::WriteSQLDocumentation, &this->sql_builder(), std::placeholders::_1) }
+
       };
    try {
       out << "Dictionary:  " << Name() << '\n'
@@ -800,40 +753,8 @@ std::vector<std::string> TMyDictionary::TopologicalSequence() const {
    return sorted;
    }
 
-std::experimental::generator<long long> fibunacci() {
-   co_yield 0l;
-   long long prepredecessor = 0;
-   long long predecessor = 1;
-   for(auto step : std::views::iota(0)) {
-      long long next = prepredecessor + predecessor;
-      prepredecessor = predecessor;
-      predecessor = next;
-      co_yield next;
-      }
-   }
 
-namespace own {
-   struct filter_odd {
-      template <std::ranges::input_range range_ty>
-         requires std::integral<std::ranges::range_value_t<range_ty>>
-      auto operator()(range_ty&& r) const -> std::experimental::generator<std::ranges::range_value_t<range_ty>> {
-         for (const auto& elem : r) {
-            if (elem % 2 == 1) {
-               co_yield elem;
-               }
-            }
-         }
-
-      template <std::ranges::input_range range_ty>
-      friend auto operator | (range_ty&& r, filter_odd const& filter) {
-         return filter(std::forward<range_ty>(r));
-         }
-   };
-
-   namespace views {
-      inline constexpr auto odd = filter_odd{};
-      }
-   }
+#include "fibunacci.h"
 
 void TMyDictionary::Test() const {
    /*
@@ -845,109 +766,7 @@ void TMyDictionary::Test() const {
    std::cout << "\n\n";
    */
 
-   using test_type = std::pair<int, std::string>;
-
-   test_type arrayTest[] = { {  1, "banana"s },       {  2, "apple"s },
-                                               {  3, "pear"s },         {  4, "pineapple"s },
-                                               {  5, "peach"s },        {  6, "mango"s },
-                                               {  7, "strawberry"s },   {  8, "orange"s },
-                                               {  9, "watermelon"s },   { 10, "grape"s },
-                                               { 11, "cherry"s },       { 12, "blueberry" },
-                                               { 13, "raspberry"s },    { 14, "papaya"s },
-                                               { 15, "kiwi"s },         { 16, "pomegranate"s },
-                                               { 17, "plum"s },         { 18, "avocado"s },
-                                               { 19, "coconut"s },      { 20, "fig"s },
-                                               { 21, "lemon"s },        { 22, "lime"s },
-                                               { 23, "grapefruit"s },   { 24, "passionfruit"s },
-                                               { 25, "dragonfruit"s },  { 26, "guava"s },
-                                               { 27, "apricot"s },      { 28, "lychee" },
-                                               { 29, "cantaloupe"s },   { 30, "blackberry"s },
-                                               { 31, "persimmon"s },    { 32, "nectarine"s },
-                                               { 33, "cranberry"s },    { 34, "mulberry"s },
-                                               { 35, "gooseberry"s },   { 36, "tangerine"s },
-                                               { 37, "durian"s },       { 38, "jackfruit"s },
-                                               { 39, "starfruit"s },    { 40, "custard apple"s },
-                                               { 41, "acerola"s },      { 42, "rosehip"s },
-                                               { 43, "elderberry"s },   { 44, "boysenberry"s },
-                                               { 45, "blackcurrant"s }, { 46, "redcurrant"s },
-                                               { 47, "blackthorn"s },   { 48, "mangosteen"s },
-                                               { 49, "chokeberry"s },   { 50, "cloudberry"s },
-                                               { 51, "jujube"s },       { 52, "physalis"s },
-                                               { 53, "tamarillo"s }
-                                             };
-
-
-   std::map<int, std::string> mapTest = { {  1, "banana"s},        {  2, "apple"s }, 
-                                          {  3, "pear"s},          {  4, "pineapple"s },
-                                          {  5, "peach"s},         {  6, "mango"s }, 
-                                          {  7, "strawberry"s},    {  8, "orange"s },
-                                          {  9, "watermelon"s },   { 10, "grape"s }, 
-                                          { 11, "cherry"s },       { 12, "Blueberry" },
-                                          { 13, "raspberry"s},     { 14, "papaya"s },
-                                          { 15, "kiwi"s},          { 16, "pomegranate"s },
-                                          { 17, "plum"s},          { 18, "avocado"s },
-                                          { 19, "coconut"s},       { 20, "fig"s },
-                                          { 21, "lemon"s },        { 22, "lime"s },
-                                          { 23, "grapefruit"s },   { 24, "passionfruit"s },
-                                          { 25, "dragonfruit"s },  { 26, "guava"s },
-                                          { 27, "apricot"s },      { 28, "lychee" },
-                                          { 29, "cantaloupe"s },   { 30, "blackberry"s },
-                                          { 31, "persimmon"s },    { 32, "nectarine"s },
-                                          { 33, "cranberry"s },    { 34, "mulberry"s },
-                                          { 35, "gooseberry"s },   { 36, "tangerine"s },
-                                          { 37, "durian"s },       { 38, "jackfruit"s },
-                                          { 39, "starfruit"s },    { 40, "custard apple"s },
-                                          { 41, "acerola"s },      { 42, "rosehip"s },
-                                          { 43, "elderberry"s },   { 44, "boysenberry"s },
-                                          { 45, "blackcurrant"s }, { 46, "redcurrant"s },
-                                          { 47, "blackthorn"s },   { 48, "mangosteen"s },
-                                          { 49, "chokeberry"s },   { 50, "cloudberry"s },
-                                          { 51, "jujube"s },       { 52, "physalis"s },
-                                          { 53, "tamarillo"s }
-                                        };
-
-   std::vector<test_type> vecTest = { {  1, "banana"s },       {  2, "apple"s },
-                                                        {  3, "pear"s },         {  4, "pineapple"s },
-                                                        {  5, "peach"s },        {  6, "mango"s },
-                                                        {  7, "strawberry"s },   {  8, "orange"s },
-                                                        {  9, "watermelon"s },   { 10, "grape"s },
-                                                        { 11, "cherry"s },       { 12, "blueberry" },
-                                                        { 13, "raspberry"s },    { 14, "papaya"s },
-                                                        { 15, "kiwi"s },         { 16, "pomegranate"s },
-                                                        { 17, "plum"s },         { 18, "avocado"s },
-                                                        { 19, "coconut"s },      { 20, "fig"s },
-                                                        { 21, "lemon"s },        { 22, "lime"s },
-                                                        { 23, "grapefruit"s },   { 24, "passionfruit"s },             
-                                                        { 25, "dragonfruit"s },  { 26, "guava"s },
-                                                        { 27, "apricot"s },      { 28, "lychee" },
-                                                        { 29, "cantaloupe"s },   { 30, "blackberry"s },
-                                                        { 31, "persimmon"s },    { 32, "nectarine"s },
-                                                        { 33, "cranberry"s },    { 34, "mulberry"s },
-                                                        { 35, "gooseberry"s },   { 36, "tangerine"s },
-                                                        { 37, "durian"s },       { 38, "jackfruit"s },
-                                                        { 39, "starfruit"s },    { 40, "custard apple"s },
-                                                        { 41, "acerola"s },      { 42, "rosehip"s },
-                                                        { 43, "elderberry"s },   { 44, "boysenberry"s },
-                                                        { 45, "blackcurrant"s }, { 46, "redcurrant"s },
-                                                        { 47, "blackthorn"s },   { 48, "mangosteen"s },
-                                                        { 49, "chokeberry"s },   { 50, "cloudberry"s },
-                                                        { 51, "jujube"s },       { 52, "physalis"s },
-                                                        { 53, "tamarillo"s } 
-                                                      };
-
-   //*
-   std::ranges::sort(vecTest, [](auto const& lhs, auto const& rhs) { return lhs.second < rhs.second; });
-
-   for (auto const& val : own::serialize(std::span(arrayTest)) | own::views::second) std::cout << val << '\n';
-
-   std::vector<long long> test;
-   std::ranges::copy(fibunacci() | std::views::take(30) | own::views::odd , std::back_inserter(test));
-   std::ranges::sort(test, [](auto const& lhs, auto const& rhs) { return rhs < lhs; });
-   for (auto f : test) {
-      std::cout << f << '\n';
-      }
-   //*/
- 
+   fibunacci_test();
 
    /*
    auto topologic = TopologicalSequence();

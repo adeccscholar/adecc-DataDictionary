@@ -1,4 +1,4 @@
-#pragma once
+#pragma once 
 /** \file
    \brief Schnittstellen der Metadatenverwaltung
    \version 1.0
@@ -12,6 +12,8 @@
    This project is released under the MIT License.
 */
 
+#include "GenerateSQL.h"
+
 #include <iostream>
 #include <iomanip>
 #include <string>
@@ -24,13 +26,7 @@
 #include <format>
 #include <ranges>
 
-#include <cstddef>  // for std::size_t
-#include <concepts> // for concepts
-#include <coroutine>
-#include <experimental/generator>
-
 namespace fs = std::filesystem;
-
 using namespace std::string_literals;
 
 inline std::string CurrentTimeStamp(std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now()) {
@@ -75,9 +71,6 @@ class TMyDictionary;
 class TMyTable;
 class TMyReferences;
 class TMyAttribute;
-
-template <typename ty>
-concept MySize_T =  std::same_as<ty, unsigned int> || std::is_convertible_v<ty, std::string>;
 
 class TMyDatatype {
 private:
@@ -215,6 +208,7 @@ public:
       table{ pTable },
       data{ myData { pName, pRefType, pRefTable, pDescription, pCardinality,  pShowAttribute, pComment, std::move(pValues) } } { }
 
+   TMyTable const& Table() const { return table;  }
    std::string const& Name() const { return std::get<0>(data); }
    EMyReferenceType             ReferenceType() const { return std::get<1>(data); }
    std::string const&           RefTable() const { return std::get<2>(data); }
@@ -224,7 +218,6 @@ public:
    std::string const&           Comment() const { return std::get<6>(data); }
    std::vector<myValues> const& Values() const { return std::get<7>(data); }
 
-   std::string SQLRow() const;
    std::string ReferenceTypeTxt() const;
    };
 
@@ -252,20 +245,17 @@ public:
       table{ pTable },
       data{ myData { pName, pIndexType, pComment, std::move(pValues) } } { }
 
+   TMyTable const& Table() const { return table; }
    std::string const& Name() const { return std::get<0>(data); }
    EMyIndexType       IndexType() const { return std::get<1>(data); }
    std::string const& Comment() const { return std::get<2>(data); }
    std::vector<myValues> const& Values() const { return std::get<3>(data); }
-
-   std::string SQLRow() const;
 
 };
 
 using myIndices = std::vector<TMyIndices>;
 
 enum class EMyEntityType : uint32_t { undefined, table, range, relationship, view };
-
-using myStatements = std::vector<std::string>;
 
 
 class TMyNameSpace {
@@ -452,70 +442,6 @@ public:
 
    bool CreateDox(std::ostream& os) const;
 
-   /// \name functions to generate sql statements for this table
-   /// {
-   myStatements Create_Table_Statements() const;
-   myStatements Create_View_Statements() const;
-   myStatements Create_Alter_Table_Statements() const; 
-   myStatements Create_Primary_Key_Statements() const;
-   myStatements Create_Foreign_Keys_Statements() const;
-   myStatements Create_Unique_Keys_Statements() const;
-   myStatements Check_Conditions_Statements() const;
-   myStatements Create_Indices_Statements() const;
-   myStatements Create_RangeValues_Statements() const;
-   myStatements Create_PostConditions_Statements() const;
-   myStatements Create_Cleaning_Statements() const;
-   /// }
-
-   bool SQL_Create_Table(std::ostream& os) const;
-   bool SQL_Create_View(std::ostream& os) const;
-   bool SQL_Create_Alter_Table(std::ostream& os) const;
-   bool SQL_Create_Primary_Key(std::ostream& os) const;
-   bool SQL_Create_Foreign_Keys(std::ostream& os) const;
-   bool SQL_Create_Unique_Keys(std::ostream& os) const;
-   bool SQL_Create_Indices(std::ostream& os) const;
-   bool SQL_Create_Check_Conditions(std::ostream& os) const;
-   bool SQL_Create_RangeValues(std::ostream& os) const;
-   bool SQL_Create_PostConditions(std::ostream& os) const;
-   bool SQL_Drop_Tables(std::ostream& os) const;
-   bool SQL_Create_Cleaning(std::ostream& os) const;
-
-   bool SQL_Create_Descriptions(std::ostream& os) const;
-
-   template <MySize_T... Args>
-   std::vector<std::pair<size_t, size_t>> Funktion(std::string strName, Args&&... args) const {
-      std::vector<std::pair<size_t, size_t>> result;
-
-      std::vector<size_t> values1;
-      std::vector<size_t> values2;
-      std::string separator;
-
-      bool foundSeparator = false;
-
-      (([&](const auto& arg) {
-         if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, std::string>) [[unlikely]] {
-            separator = arg;
-            foundSeparator = true;
-            }
-         else if (foundSeparator) {
-            values2.emplace_back(static_cast<size_t>(arg));
-            }
-         else {
-            values1.emplace_back(static_cast<size_t>(arg));
-            }
-         }(args)), ...);
-
-      // Überprüfe, ob die Gruppen die gleiche Länge haben
-      if (values1.size() != values2.size()) {
-         throw std::invalid_argument("Ungleich lange Gruppen von size_t-Werten.");
-         }
-
-      auto zipped = std::views::zip(values1, values2);
-      std::copy(zipped.begin(), zipped.end(), std::back_inserter(result));
-
-
-      return result;
-      }
    //private:
       std::set<std::string> GetPrecursors(bool boAll = true) const;
       std::set<std::string> GetSuccessors(bool boAll = true) const;
@@ -523,8 +449,11 @@ public:
 
 using myTables = std::map<std::string, TMyTable>;
 
+
+
 // ------------------------------------------------------------------------------------------------
 /// \brief class represented the metadata collection and hold all data
+
 
 class TMyDictionary {
    std::string   strName        = "default"s;   ///< name of the project
@@ -564,11 +493,13 @@ class TMyDictionary {
    myTables      tables;                        ///< container with all tables inside of this project
    myNameSpaces  namespaces;                    ///< container with all defined namespaces of this project
    myDirectories directories;                   ///< container with defined subdirectories of this project
+
+   Generator_SQL buildSQLRef{ *this };         ///< reference to an element of the sql generator class
 public:
 
    TMyDictionary() = default;
    TMyDictionary(std::string const& pName, std::string const& pVersion = "1.0"s, std::string const& pComment = ""s) : 
-        strName(pName), strVersion(pVersion), strComment(pComment) { }
+        strName(pName), strVersion(pVersion), strComment(pComment), buildSQLRef{ *this } { }
 
    /** \name selectors for class TMyDictionary
        \{ */ 
@@ -592,24 +523,26 @@ public:
 
    std::string        Identifier() const;  ///< methode to generate a identifier from project name (remove spaces)
 
-   myDataTypes const& DataTypes() const { return datatypes; }; 
-   myTables const&    Tables() const { return tables; };
+   myDataTypes const&       DataTypes() const { return datatypes; }; 
+   myTables const&          Tables() const { return tables; };
    std::vector<std::string> TopologicalSequence() const;
 
-   bool               UseBaseClass() const { return strBaseClass.size() > 0; }
-   std::string const& BaseClass() const { return strBaseClass; }
-   std::string const& BaseNamespace() const { return strBaseNamespace; } 
-   fs::path const&    PathToBase() const { return pathToBase; }
+   bool                     UseBaseClass() const { return strBaseClass.size() > 0; }
+   std::string const&       BaseClass() const { return strBaseClass; }
+   std::string const&       BaseNamespace() const { return strBaseNamespace; } 
+   fs::path const&          PathToBase() const { return pathToBase; }
 
-   bool               HasPersistenceClass() const { return strPersistenceClass.size() > 0; }
-   std::string const& PersistenceClass() const { return strPersistenceClass; }
-   std::string const& PersistenceName() const { return  strPersistenceName; }
-   std::string const& PersistenceNamespace() const { return strPersistenceNamespace; }
-   fs::path const&    PathToPersistence() const { return pathToPersistence; }
-   std::string const& PersistenceServerType() const{ return strPersistenceServerType; };
-   std::string const& PersistenceDatabase() const { return strPersistenceDatabase; }
+   bool                     HasPersistenceClass() const { return strPersistenceClass.size() > 0; }
+   std::string const&       PersistenceClass() const { return strPersistenceClass; }
+   std::string const&       PersistenceName() const { return  strPersistenceName; }
+   std::string const&       PersistenceNamespace() const { return strPersistenceNamespace; }
+   fs::path const&          PathToPersistence() const { return pathToPersistence; }
+   std::string const&       PersistenceServerType() const{ return strPersistenceServerType; };
+   std::string const&       PersistenceDatabase() const { return strPersistenceDatabase; }
 
-   std::string        FullPersistenceClass() const { return (PersistenceNamespace().size() > 0 ? PersistenceNamespace() + "::"s : ""s) + PersistenceClass(); }
+   std::string              FullPersistenceClass() const { return (PersistenceNamespace().size() > 0 ? 
+                                                                   PersistenceNamespace() + "::"s : ""s) + 
+                                                                   PersistenceClass(); }
 
 
    /// \}
@@ -683,16 +616,8 @@ public:
    void CreateTable(std::string const& strTable, std::ostream& out) const;
    void CreateClass(std::string const& strTable, std::ostream& out) const;
 
-   bool Create_SQL_Tables(std::ostream&) const;
-   bool Create_SQL_Additionals(std::ostream&) const;
-   bool Create_SQL_RangeValues(std::ostream&) const;
-
    void Create_Doxygen(std::ostream&) const;
    void Create_Doxygen_SQL(std::ostream&) const;
-
-   bool Create_SQL_Documentation(std::ostream&) const;
-
-   bool SQL_Drop_Tables(std::ostream& os) const;
 
    bool CreateBaseHeader(std::ostream& out = std::cout) const;
 
@@ -710,10 +635,16 @@ public:
 
    void Create_All(std::ostream& out = std::cout, std::ostream& err = std::cerr) const;
 
+
+   Generator_SQL const& sql_builder() const { return buildSQLRef; }
+
    void Test() const;
 
 private:
    std::vector<std::tuple<std::string, std::string, std::vector<size_t>>> GetCompositions(TMyTable const&) const;
    std::vector<std::tuple<std::string, std::string, std::string, std::string, std::vector<size_t>>> GetRangeValues(TMyTable const& table) const;
 };
+
+#include "GenerateSQL.inl"
+
 

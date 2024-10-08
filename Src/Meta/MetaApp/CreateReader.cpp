@@ -1,4 +1,5 @@
 #include "DataDictionary.h"
+#include "DictionaryHelper.h"
 
 #include <iostream>
 #include <format>
@@ -31,18 +32,16 @@ bool TMyDictionary::CreateSQLStatementHeader(std::ostream& os) const {
       if (PersistenceNamespace().size() > 0) os << "namespace " << PersistenceNamespace() << " {\n\n";
 
       for (auto const& [_, table] : Tables()) {
-         os << "// sql statements for table " << table.FullyQualifiedSQLName() << "\n"
-            << "extern const std::string strSQL" << table.Name() << "SelectAll;\n"
-            << "extern const std::string strSQL" << table.Name() << "SelectDetail;\n"
-            << "extern const std::string strSQL" << table.Name() << "DeleteAll;\n"
-            << "extern const std::string strSQL" << table.Name() << "DeleteDetail;\n"
-            << "extern const std::string strSQL" << table.Name() << "Insert;\n"
-            << "extern const std::string strSQL" << table.Name() << "UpdateWithPrim;\n";
-            auto withoutPrim = table.Attributes() | std::views::filter([](auto const& a) { return !a.Primary(); })
-                                                  | std::ranges::to<std::vector>();
-            if (withoutPrim.size() > 0)
-               os << "extern const std::string strSQL" << table.Name() << "UpdateWithoutPrim;\n";
-            os << "\n";
+         os << "// sql statements for table " << table.FullyQualifiedSQLName() << '\n';
+         sql_builder()
+            .WriteQueryHeader<EQueryType::SelectAll>(table, os)
+            .WriteQueryHeader<EQueryType::SelectPrim>(table, os)
+            .WriteQueryHeader<EQueryType::Insert>(table, os)
+            .WriteQueryHeader<EQueryType::UpdateAll>(table, os)
+            .WriteQueryHeader<EQueryType::UpdateWithoutPrims>(table, os)
+            .WriteQueryHeader<EQueryType::DeleteAll>(table, os)
+            .WriteQueryHeader<EQueryType::DeletePrim>(table, os);
+         os << "\n";
          }
 
       if (PersistenceNamespace().size() > 0) os << "} // close namespace " << PersistenceNamespace() << "\n";
@@ -68,100 +67,24 @@ bool TMyDictionary::CreateSQLStatementSource(std::ostream& os) const {
       if (PersistenceNamespace().size() > 0) os << "namespace " << PersistenceNamespace() << " {\n\n";
 
       for (auto const& [_, table] : Tables()) {
-         std::ostringstream tmp, tmpDetail;
-         auto prim_keys = table.Attributes() | std::views::filter([](auto const& a) { return a.Primary(); });
-         auto maxPrimElement = std::ranges::max_element(prim_keys, [](auto const& a, auto const& b) {
-            return a.DBName().size() < b.DBName().size(); });
-
-         size_t maxLengthPrimAttr = 0;
-         if (maxPrimElement != prim_keys.end()) {
-            maxLengthPrimAttr = maxPrimElement->DBName().size();
-            }
-
-         auto maxElement = std::ranges::max_element(table.Attributes(), [](auto const& a, auto const& b) {
-            return a.DBName().size() < b.DBName().size(); });
-
-         size_t maxLengthAttr = 0;
-         if (maxElement != table.Attributes().end()) {
-            maxLengthAttr = maxElement->DBName().size();
-            }
-
-
          os << "// --------------------------------------------------------------------\n"
             << "//   Statements for table / view: " << table.Name() << "\n"
             << "// --------------------------------------------------------------------\n";
-         tmp << "     \"SELECT ";
-         tmp << std::format("{0}", std::begin(table.Attributes())->DBName());
-         size_t len = std::begin(table.Attributes())->DBName().size();
-         for (auto const& attrib : table.Attributes() | std::views::drop(1)) {
-            if(len > 60) {
-               tmp << ",\\n\"\n     \"       ";
-               len = attrib.DBName().size();
-               }
-            else {
-               tmp << ", ";
-               len += attrib.DBName().size();
-               }
-            tmp << std::format("{0}", attrib.DBName());
-            }
-         tmp << "\\n\"\n"
-             << "     \"FROM " << table.FullyQualifiedSQLName();
-         os << "const std::string strSQL" << table.Name() << "SelectAll = \n" << tmp.str() << "\";\n\n";
-         os << "const std::string strSQL" << table.Name() << "SelectDetail = \n" << tmp.str()
-            << "\\n\"\n";
-         tmpDetail << "     \"WHERE " << std::format("{0:<{1}} = :key{0}", std::begin(prim_keys)->DBName(), maxLengthPrimAttr);
-         for (auto const& attrib : prim_keys | std::views::drop(1)) 
-            tmpDetail << std::format(" AND\\n\"\n     \"      {0:<{1}} = :key{0}", attrib.DBName(), maxLengthPrimAttr);
+         sql_builder()
+            .WriteQuerySource<EQueryType::SelectAll>(table, os)
+            .WriteQuerySource<EQueryType::SelectPrim>(table, os)
+            .WriteQuerySource<EQueryType::Insert>(table, os)
+            .WriteQuerySource<EQueryType::UpdateAll>(table, os)
+            .WriteQuerySource<EQueryType::UpdateWithoutPrims>(table, os)
+            .WriteQuerySource<EQueryType::DeleteAll>(table, os)
+            .WriteQuerySource<EQueryType::DeletePrim>(table, os);
          
-         os << tmpDetail.str() << "\";\n\n";
 
          // building lot for insert
-         tmp.str("");
+         std::ostringstream tmp;
          tmp << "     \"INSERT INTO " << table.FullyQualifiedSQLName() << " ";
          size_t prefixLen = tmp.str().size();
-         len = prefixLen;
-
-
-         tmp.str("");
-         tmp << "     \"UPDATE " << table.FullyQualifiedSQLName() << "\\n\"" << "\n     \"SET ";
-
-         os << "const std::string strSQL" << table.Name() << "UpdateWithPrim = \n" << tmp.str();
-         os << std::format("{0:<{1}} = :{0}", std::begin(table.Attributes())->DBName(), maxLengthAttr);
-         for (auto const& attrib : table.Attributes() | std::views::drop(1)) {
-            os << std::format(",\\n\"\n     \"    {0:<{1}} = :{0}", attrib.DBName(), maxLengthAttr);
-            }
-         os << "\\n\"\n" << tmpDetail.str() << "\";\n\n";
-
-         auto withoutPrim = table.Attributes() | std::views::filter([](auto const& a) { return !a.Primary(); })
-                                               | std::ranges::to<std::vector>();
-
-         if(withoutPrim.size() > 0) {
-            auto maxNonPrimElement = std::ranges::max_element(withoutPrim, [](auto const& a, auto const& b) {
-               return a.DBName().size() < b.DBName().size(); });
-
-            size_t maxLengthNonPrimAttr = 0;
-            if (maxNonPrimElement != withoutPrim.end()) {
-               maxLengthNonPrimAttr = maxNonPrimElement->DBName().size();
-               }
-
-            os << "const std::string strSQL" << table.Name() << "UpdateWithoutPrim = \n" << tmp.str();
-            os << std::format("{0:<{1}} = :{0}", std::begin(withoutPrim)->DBName(), maxLengthNonPrimAttr);
-            for (auto const& attrib : withoutPrim | std::views::drop(1)) {
-               os << std::format(",\\n\"\n     \"    {0:<{1}} = :{0}", attrib.DBName(), maxLengthNonPrimAttr);
-               }
-
-            os << "\\n\"\n" << tmpDetail.str() << "\";\n\n";
-            }
-
-         tmp.str("");
-         tmp << "     \"DELETE FROM " << table.FullyQualifiedSQLName();
-         os << "const std::string strSQL" << table.Name() << "DeleteAll = \n"
-            << tmp.str() << "\";\n\n";
-         
-         os << "const std::string strSQL" << table.Name() << "DeleteDetail = \n"
-            << tmp.str() << "\\n\"\n";
-         os << tmpDetail.str() << "\";\n\n";
-
+         size_t len = prefixLen;
          os << "\n";
          }
 

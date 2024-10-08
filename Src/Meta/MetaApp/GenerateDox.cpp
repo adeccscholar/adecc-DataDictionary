@@ -1,4 +1,5 @@
 
+#include "GenerateSQL.h"
 #include "DataDictionary.h"
 
 #include <sstream>
@@ -18,17 +19,19 @@ inline std::string toHTML(const std::string& input) {
    std::string output;
    std::ranges::for_each(input, [&output](char c) {
       switch (c) {
-      case 'ä': output += "&auml;"; break;
-      case 'ö': output += "&ouml;"; break;
-      case 'ü': output += "&uuml;"; break;
-      case 'Ä': output += "&Auml;"; break;
-      case 'Ö': output += "&Ouml;"; break;
-      case 'Ü': output += "&Uuml;"; break;
-      case 'ß': output += "&szlig;"; break;
-      case '<': output += "&lt;"; break;
-      case '>': output += "&gt;"; break;
-      default: output.push_back(c); break;
-      }
+         case 'ä': output += "&auml;"; break;
+         case 'ö': output += "&ouml;"; break;
+         case 'ü': output += "&uuml;"; break;
+         case 'Ä': output += "&Auml;"; break;
+         case 'Ö': output += "&Ouml;"; break;
+         case 'Ü': output += "&Uuml;"; break;
+         case 'ß': output += "&szlig;"; break;
+         case '<': output += "&lt;"; break;
+         case '>': output += "&gt;"; break;
+         case '©': output += "&copy;"; break;
+         case '®': output += "&reg;"; break;
+         default: [[likely]] output.push_back(c); break;
+         }
       });
    return output;
 }
@@ -43,17 +46,17 @@ void TMyDictionary::Create_Doxygen_SQL(std::ostream& os) const {
       << "          all foreign key, before the tables can be dropped too.\n\n"
       << "\\section secPg" << Identifier() << "_sql_create create tables of the application\n"
       << "\\code{.sql}\n";
-   Create_SQL_Tables(os);
+   sql_builder().WriteSQLTables(os);
    os << "\\endcode\n";
 
    os << "\\section secPg" << Identifier() << "_sql_additional create all additional informations\n"
       << "\\code{.sql}\n";
-   Create_SQL_Additionals(os);
+   sql_builder().WriteSQLAdditionals(os);
    os << "\\endcode\n";
 
    os << "\\section secPg" << Identifier() << "_sql_drop drop all elements in the database\n"
       << "\\code{.sql}\n";
-   SQL_Drop_Tables(os);
+   sql_builder().WriteSQLDropTables(os);
    os << "\\endcode\n";
 
    }
@@ -457,19 +460,14 @@ void TMyDictionary::Create_Doxygen(std::ostream& os) const {
       // --------------------------------------------------------------------------------------
       os << "\n\\subsubsection " << table.Doc_RefName() << "_create create statement\n"
          << "\\code{.sql}\n";
-      table.SQL_Create_Table(os);
-      os << '\n';
-      table.SQL_Create_Alter_Table(os);
-      os << '\n';
-      table.SQL_Create_PostConditions(os);
-      os << '\n';
-      table.SQL_Create_Check_Conditions(os);
-      os << '\n';
-      table.SQL_Create_Primary_Key(os);
-      os << '\n';
-      table.SQL_Create_Unique_Keys(os);
-      os << '\n';
-      table.SQL_Create_Foreign_Keys(os);
+      sql_builder()
+         .WriteCreateTable(table, os)
+         .WriteAlterTable(table, os)
+         .WriteCreatePostConditions(table, os)
+         .WriteCreateCheckConditions(table, os)
+         .WritePrimaryKey(table, os)
+         .WriteUniqueKeys(table, os)
+         .WriteForeignKeys(table, os);
       os << "\n\\endcode\n";
       os << "\n";
 
@@ -479,7 +477,7 @@ void TMyDictionary::Create_Doxygen(std::ostream& os) const {
       if(table.RangeValues().size() > 0) {
          os << "\n\\subsubsection " << table.Doc_RefName() << "_values insert values\n"
             << "\\code{.sql}\n";
-         table.SQL_Create_RangeValues(os);
+         sql_builder().WriteRangeValues(table, os);
          os << "\n\\endcode\n";
          }
 
