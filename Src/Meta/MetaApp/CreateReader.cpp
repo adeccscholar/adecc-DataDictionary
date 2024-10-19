@@ -42,6 +42,10 @@ bool TMyDictionary::CreateSQLStatementHeader(std::ostream& os) const {
             .WriteQueryHeader<EQueryType::DeleteAll>(table, os)
             .WriteQueryHeader<EQueryType::DeletePrim>(table, os);
          os << "\n";
+         for (auto const& idx : table.Indices())
+            sql_builder()
+              .WriteQueryHeader<EQueryType::SelectIdx>(table, idx, os);
+         os << "\n";
          }
 
       if (PersistenceNamespace().size() > 0) os << "} // close namespace " << PersistenceNamespace() << "\n";
@@ -78,13 +82,11 @@ bool TMyDictionary::CreateSQLStatementSource(std::ostream& os) const {
             .WriteQuerySource<EQueryType::UpdateWithoutPrims>(table, os)
             .WriteQuerySource<EQueryType::DeleteAll>(table, os)
             .WriteQuerySource<EQueryType::DeletePrim>(table, os);
-         
 
-         // building lot for insert
-         std::ostringstream tmp;
-         tmp << "     \"INSERT INTO " << table.FullyQualifiedSQLName() << " ";
-         size_t prefixLen = tmp.str().size();
-         size_t len = prefixLen;
+         for(auto const& idx : table.Indices())
+            sql_builder()
+              .WriteQuerySource<EQueryType::SelectIdx>(table, idx, os);
+         
          os << "\n";
          }
 

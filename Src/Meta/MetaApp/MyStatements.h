@@ -34,10 +34,17 @@ inline std::string toString(myStatements const& stmts) {
    }
 
 inline void WriteSource(myStatements const& stmts, std::ostream& os) {
-   if (stmts.size() > 1) [[likely]] {
-      for (auto const& row : stmts | std::views::take(stmts.size() - 1))
-         os << std::format("     \"{}\\n\"\n", row);
-      }
-   os << std::format("     \"{}\";", stmts.back());
+   switch(stmts.size()) {
+      case 0:
+         os << "     \"\";"s;
+         break;
+      default: [[likely]] //[[fallthrough]]
+         for (auto const& row : stmts | std::views::take(stmts.size() - 1))
+            os << std::format("     \"{}\\n\"\n", row);
+         [[fallthrough]];
+      case 1: 
+         os << std::format("     \"{}\";", stmts.back());
+         break;
    }
+}
 

@@ -18,6 +18,7 @@ class Property {
 public:
    Property(func_ty&& para) : func(std::forward<func_ty>(para)) {}
    operator ret_ty() { return func(); }
+   ret_ty operator ()() { return func(); }
 private:
    func_ty func;
 };

@@ -30,7 +30,7 @@
 #include <format>
 #include <ranges>
 
-namespace fs = std::filesystem;
+namespace fs = std::filesystem;   
 using namespace std::string_literals;
 
 
@@ -364,33 +364,10 @@ myStatements Generator_SQL::CreateView_Statements(TMyTable const& table) const {
    }
 
 
-myStatements Generator_SQL::CreateSelectAll_Statement(TMyTable const& table) const {
-   myStatements stmts;
-   std::ostringstream os;
-   auto const& firstAttr = std::begin(table.Attributes())->DBName();
-   os << std::format("SELECT {0}", firstAttr);
-   
-   for (size_t len = firstAttr.size(); auto const& attrib : table.Attributes() | std::views::drop(1)) {
-      if (len > 60) {
-         os << ",";
-         stmts.emplace_back(os.str());
-         os.str("");
-         os << "       ";
-         len = attrib.DBName().size();
-         }
-      else {
-         os << ", ";
-         len += attrib.DBName().size();
-         }
-      os << std::format("{0}", attrib.DBName());
-      }
-   stmts.emplace_back(os.str());
-   os.str("");
-   os << "FROM " << table.FullyQualifiedSQLName();
-   stmts.emplace_back(os.str());
-   return stmts;
-   }
 
+
+
+/*
 myStatements Generator_SQL::CreateWherePrim_Statement(TMyTable const& table) const {
    myStatements stmts;
 
@@ -420,12 +397,6 @@ myStatements Generator_SQL::CreateWherePrim_Statement(TMyTable const& table) con
          stmts.emplace_back(os.str());
          }
       }
-   return stmts;
-   }
-
-myStatements Generator_SQL::CreateSelectPrim_Statement(TMyTable const& table) const {
-   auto stmts = CreateSelectAll_Statement(table); 
-   stmts += CreateWherePrim_Statement(table);
    return stmts;
    }
 
@@ -479,75 +450,213 @@ myStatements Generator_SQL::CreateUpdateWithoutPrim_Statement(TMyTable const& ta
    return stmts;
    }
 
+*/
+
+// =====================================================================================================================
+//  NEW DEFINITION FOR FUNCTIONS WHICH CREATE SQL STATEMENTS
+// =====================================================================================================================
+
+using attr_func = std::function<bool(TMyAttribute const&)>;
+
+//myStatements, stream, prefix, intro, first, follow, separator, Abschluss, länge, zuweisung, function
+//                                0                1                 2            3            4            5        
+using part_data = std::tuple<myStatements, std::ostringstream, std::string, std::string, std::string, std::string, 
+//                                6           7         8        9      10
+                             std::string, std::string, size_t, bool, attr_func>;
+
+auto part_detail = [](attr_func f, int l, bool b, std::string&& p1, std::string&& p2, std::string&& p3, std::string&& p4, std::string&& p5, std::string&& p6) {
+   return part_data{ myStatements {}, std::ostringstream {}, p1, p2, p3, p4, p5, p6, (l < 0 ? 0u : static_cast<size_t>(l)), b, f };
+   };
 
 
+template <size_t SIZE>
+myStatements CreateStatement(std::array<part_data, SIZE>& parts, myAttributes const& all_attributes) {
+   static_assert(SIZE != 0, "invalid specification of SIZE");
 
-
-myStatements Generator_SQL::CreateInsert_Statement(TMyTable const& table) const {
-   if (auto const& attributes = table.Attributes(); attributes.size() == 0) [[unlikely]] return { };
+   if (all_attributes.size() == 0) [[unlikely]] return { };
    else {
-      //                                0                1                 2            3            4            5        6
-      using part_data = std::tuple<myStatements, std::ostringstream, std::string, std::string, std::string, std::string, size_t>;
-      static auto part_detail = [](int l, std::string&& p1, std::string&& p2, std::string&& p3, std::string&& p4) {
-            return part_data{ myStatements {}, std::ostringstream {}, p1, p2, p3, p4, (l < 0 ? 0u : static_cast<size_t>(l)) };
-            };
+      for (auto& part : parts) {
+         auto attributes = all_attributes | std::views::filter([&part](auto const& a) { return std::get<10>(part)(a); })
+                                          | std::ranges::to<std::vector>();
       
-      std::array<part_data, 2> parts {
-          part_detail (60, ""s,  std::format("INSERT INTO {} (", table.FullyQualifiedSQLName()), "   "s,  "   "s ),
-          part_detail (65, ":"s, "VALUES ("s,                                                    "   "s,  "   "s)
-          };
+         auto stmts  = Property([&part]() -> myStatements&       { return std::get<0>(part);  });
+         auto stream = Property([&part]() -> std::ostringstream& { return std::get<1>(part);  });
+         auto empty  = Property([&part]() -> bool                { return std::get<1>(part).str().size() == 0;  });
+         auto get    = Property([&part]() -> std::string         { std::string result = std::move(std::get<1>(part).str());
+                                                                   std::get<1>(part).str("");
+                                                                   return result; });
+         auto intro  = Property([&part]() -> std::string const&  { return std::get<3>(part);  });
 
-      for(auto& part : parts) {
-         auto stmts   = Property([&part]() -> myStatements&        { return std::get<0>(part);  });
-         auto stream  = Property([&part]() -> std::ostringstream&  { return std::get<1>(part);  });
-         auto get     = Property([&part]() -> std::string          { std::string result = std::move(std::get<1>(part).str());
-                                                                     std::get<1>(part).str("");
-                                                                     return result; });
-         auto prefix  = [&part]() -> std::string const&   { return std::get<2>(part);  };
-         auto intro   = [&part]() -> std::string const&   { return std::get<3>(part);  };
-         auto first   = [&part]() -> std::string const&   { return std::get<4>(part);  };
-         auto follow  = [&part]() -> std::string const&   { return std::get<5>(part);  };
-         auto to_long = [&part]() -> bool                 { return std::get<1>(part).str().size() > std::get<6>(part);  };
+         size_t test = intro().size();
+         if (intro().size() > 0) stmts += std::string(intro);
+      
+         if (attributes.size() > 0) {
+            auto prefix  = [&part]() -> std::string const& { return std::get<2>(part);  };
+            auto first   = [&part]() -> std::string const& { return std::get<4>(part);  };
+            auto follow  = [&part]() -> std::string const& { return std::get<5>(part);  };
+            auto sepa    = [&part]() -> std::string const& { return std::get<6>(part);  };
+            auto closer  = [&part]() -> std::string const& { return std::get<7>(part);  };
+            auto to_long = [&part]() -> bool               { return std::get<1>(part).str().size() > std::get<8>(part);  };
+            auto assign  = [&part]() -> bool               { return std::get<9>(part);  };
 
-         if (intro().size() > 0) stmts += intro();
+            auto maxLengthElement = [&attributes, &to_long, &assign]() {
+                          if (to_long() == 0 && assign()) 
+                             return std::ranges::max_element(attributes, [](auto const& a, auto const& b) {
+                                                                              return a.DBName().size() < b.DBName().size();
+                                                                              });
+                          else return attributes.end();
+                          }();
 
-         stream << std::format("{}{}{}", first(), prefix(), std::begin(attributes)->DBName());
-         if(attributes.size() > 1) [[likely]] {
-            for(auto const& attr : attributes | std::views::drop(1) | std::views::take(attributes.size() - 2)) {
-               if(to_long()) {
-                  stream << ", ";
-                  stmts += get;
-                  stream << std::format("{}{}{}", follow(), prefix(), attr.DBName());
+            auto maxLengthAttr = [&attributes, &maxLengthElement]() -> size_t {
+                          if (maxLengthElement != attributes.end()) return maxLengthElement->DBName().size();
+                          else                        return 0u;      
+                          }();
+
+            if (assign() == true)
+               stream << std::format("{0:}{2:<{3}} = {1:}{2:}", first(), prefix(), std::begin(attributes)->DBName(), maxLengthAttr);
+            else
+               stream << std::format("{}{}{}", first(), prefix(), std::begin(attributes)->DBName());
+
+            if (attributes.size() > 1) [[likely]] {
+               for (auto const& attr : attributes | std::views::drop(1) | std::views::take(attributes.size() - 2)) {
+                  if (to_long()) {
+                     stream << sepa();
+                     stmts += get;
+                     if(assign() == true) 
+                        stream << std::format("{0:}{2:<{3}} = {1:}{2:}", follow(), prefix(), attr.DBName(), maxLengthAttr);
+                     else
+                        stream << std::format("{}{}{}", follow(), prefix(), attr.DBName());
+                     }
+                  else [[likely]] {
+                     if (assign() == true)
+                        stream << std::format("{0:}{2:<{3}} =  {1:}{2:}", sepa(), prefix(), attr.DBName(), maxLengthAttr);
+                     else
+                        stream << std::format("{} {}{}", sepa(), prefix(), attr.DBName());
+                     }
                   }
-               else [[likely]] {
-                  stream << std::format(", {}{}", prefix(), attr.DBName());
+
+               if (to_long()) {
+                  stream << sepa();
+                  stmts += get;
+                  if (assign() == true)
+                     stream << std::format("{0:}{2:<{4}} = {1:}{2:}{3:}", follow(), prefix(), attributes.back().DBName(), closer(), maxLengthAttr);
+                  else
+                     stream << std::format("{}{}{}{}", follow(), prefix(), attributes.back().DBName(), closer());
+                  }
+               else {
+                  if (assign() == true)
+                     stream << std::format("{0:} {2:<{4}} = {1:}{2:}{3:}", sepa(), prefix(), attributes.back().DBName(), closer(), maxLengthAttr);
+                  else
+                     stream << std::format("{} {}{}{}", sepa(), prefix(), attributes.back().DBName(), closer());
                   }
                }
-            stream << std::format(", {}{})", prefix(), attributes.back().DBName());
+            /*
+            else {
+               if (assign() == true)
+                  stream << std::format("{1:<{3}} = {0:}{1:}{2:}", prefix(), attributes.back().DBName(), closer(), maxLengthAttr);
+               else
+                  stream << std::format("{}{}{}", prefix(), attributes.back().DBName(), closer());
+               }
+            */
             }
-         else {
-            stream << std::format("{}{})", prefix(), attributes.back().DBName());
-            }
-         stmts += get;
+         if(!empty) stmts += get;
+         }   
+      if constexpr (SIZE > 1) {
+         for(size_t step = 1; step < SIZE; ++step)  std::get<0>(parts[0]) += std::get<0>(parts[step]);
          }
-
-      std::get<0>(parts[0]) += std::get<0>(parts[1]);
       return std::get<0>(parts[0]);
       }
    }
 
-myStatements Generator_SQL::CreateDeleteAll_Statement(TMyTable const& table) const {
-   myStatements stmts;
-   stmts.emplace_back(std::format("DELETE FROM {}", table.FullyQualifiedSQLName()));
-   return stmts;
+
+myStatements Generator_SQL::CreateSelectAll_Statement(TMyTable const& table) const {
+   auto GetAll  = [](TMyAttribute const& a) -> bool { return true;  };
+   auto GetNone = [](TMyAttribute const& a) -> bool { return false;  };
+
+   std::array<part_data, 2> parts{
+          part_detail(GetAll,  60, false, ""s,  ""s, "SELECT "s,  "       "s, ","s, ""s),
+          part_detail(GetNone, 60, false, ""s,  std::format("FROM {}", table.FullyQualifiedSQLName()), ""s, ""s,  ","s, ""s)
+      };
+
+   return CreateStatement(parts, table.Attributes());
    }
+
+myStatements Generator_SQL::CreateSelectPrim_Statement(TMyTable const& table) const {
+   auto GetAll  = [](TMyAttribute const& a) -> bool { return true;  };
+   auto GetNone = [](TMyAttribute const& a) -> bool { return false;  };
+   auto GetPrim = [](TMyAttribute const& a) -> bool { return a.Primary();  };
+
+   std::array<part_data, 3> parts{
+        part_detail(GetAll,  60, false, ""s,  ""s, "SELECT "s,  "       "s, ","s, ""s),
+        part_detail(GetNone, 60, false, ""s,  std::format("FROM {}", table.FullyQualifiedSQLName()), ""s, ""s,  ""s, ""s),
+        part_detail(GetPrim,  0, true,  ":key"s,  ""s, "WHERE "s, "      "s,  " AND"s, ""s)
+      };
+
+   return CreateStatement(parts, table.Attributes());
+   }
+
+
+myStatements Generator_SQL::CreateInsert_Statement(TMyTable const& table) const {
+   auto GetAll = [](TMyAttribute const& a) -> bool { return true;  };
+   std::array<part_data, 2> parts {
+          part_detail (GetAll, 60, false, ""s,  std::format("INSERT INTO {} ", table.FullyQualifiedSQLName()), "       ("s,  "        "s, ","s, ")"s ),
+          part_detail (GetAll, 60, false, ":"s, ""s,                                                           "VALUES ("s,  "        "s, ","s, ")"s )
+          };
+
+   return CreateStatement(parts, table.Attributes());
+   }
+
+
+myStatements Generator_SQL::CreateUpdateAll_Statement(TMyTable const& table) const {
+   auto GetAll = [](TMyAttribute const& a) -> bool { return true;  };
+   auto GetNone = [](TMyAttribute const& a) -> bool { return false;  };
+   auto GetPrim = [](TMyAttribute const& a) -> bool { return a.Primary();  };
+
+   std::array<part_data, 3> parts{
+        part_detail(GetNone,  0, false, ""s,  std::format("UPDATE {}", table.FullyQualifiedSQLName()), ""s, ""s,  ""s, ""s),
+        part_detail(GetAll,   0, true,  ":"s,  ""s, "SET   "s, "      "s,  ","s, ""s),
+        part_detail(GetPrim,  0, true,  ":key"s,  ""s, "WHERE "s, "      "s,  " AND"s, ")"s)
+        };
+
+   return CreateStatement(parts, table.Attributes());
+   }
+
+myStatements Generator_SQL::CreateUpdateWithoutPrim_Statement(TMyTable const& table) const {
+   auto GetNoPrim = [](TMyAttribute const& a) -> bool { return !a.Primary();  };
+   auto GetNone   = [](TMyAttribute const& a) -> bool { return false;  };
+   auto GetPrim   = [](TMyAttribute const& a) -> bool { return a.Primary();  };
+
+   std::array<part_data, 3> parts{
+        part_detail(GetNone,   0, false, ""s,  std::format("UPDATE {}", table.FullyQualifiedSQLName()), ""s, ""s,  ""s, ""s),
+        part_detail(GetNoPrim, 0, true,  ":"s,  ""s, "SET   "s, "      "s,  ","s, ""s),
+        part_detail(GetPrim,   0, true,  ":key"s,  ""s, "WHERE "s, "      "s,  " AND"s, ")"s)
+        };
+
+   return CreateStatement(parts, table.Attributes());
+   }
+
+
+myStatements Generator_SQL::CreateDeleteAll_Statement(TMyTable const& table) const {
+   auto GetNone = [](TMyAttribute const& a) -> bool { return false;  };
+   std::array<part_data, 1> parts{
+        part_detail(GetNone, 60, false, ""s,  std::format("DELETE FROM {}", table.FullyQualifiedSQLName()), ""s, ""s,  ""s, ""s)
+        };
+
+   return CreateStatement(parts, table.Attributes());
+   }
+
 
 myStatements Generator_SQL::CreateDeletePrim_Statement(TMyTable const& table) const {
-   myStatements stmts = CreateDeleteAll_Statement(table);
-   stmts += CreateWherePrim_Statement(table);
-   return stmts;
-   }
+   auto GetNone = [](TMyAttribute const& a) -> bool { return false;  };
+   auto GetPrim = [](TMyAttribute const& a) -> bool { return a.Primary();  };
 
+   std::array<part_data, 2> parts{
+       part_detail(GetNone, 60, false, ""s,  std::format("DELETE FROM {}", table.FullyQualifiedSQLName()), ""s, ""s,  ""s, ""s),
+       part_detail(GetPrim,  0, true,  ":key"s,  ""s, "WHERE "s, "      "s,  " AND"s, ""s)
+      };
+
+   return CreateStatement(parts, table.Attributes());
+   }
 
 // =============================================================================================================
 
