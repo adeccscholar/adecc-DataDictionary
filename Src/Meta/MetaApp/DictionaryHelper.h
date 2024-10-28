@@ -10,6 +10,7 @@ namespace own {
          { t.ID() } -> std::convertible_to<size_t>;
       };
 
+
    template<typename ty>
    concept own_has_indices = std::is_enum_v<decltype(std::declval<ty>().IndexType())> &&
                              std::is_same_v<decltype(std::declval<ty>().IndexType()), EMyIndexType>;

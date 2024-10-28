@@ -31,6 +31,11 @@ Generator_SQL const& Generator_SQL::WriteQueryHeader(TMyTable const& table, TMyI
 
 template <enum EQueryType type> requires IsIndexType<type>
 Generator_SQL const& Generator_SQL::WriteQuerySource(TMyTable const& table, TMyIndices const& index, std::ostream& os) const {
+   os << "const std::string " << std::format(GetMethodName<type>(), table.Name(), index.Name()) << " =\n";
+   if constexpr      (type == EQueryType::SelectUnique)  WriteSource(CreateSelectUniqueKey_Statement(table, index), os);
+   else if constexpr (type == EQueryType::SelectIdx)     WriteSource(CreateSelectIndex_Statement(table, index), os);
+   else static_assert(always_false<type>, "this type isn't supported with this function");
+   os << "\n\n";
    return *this;
    }
 

@@ -42,7 +42,11 @@ bool TMyDictionary::CreateSQLStatementHeader(std::ostream& os) const {
             .WriteQueryHeader<EQueryType::DeleteAll>(table, os)
             .WriteQueryHeader<EQueryType::DeletePrim>(table, os);
          os << "\n";
-         for (auto const& idx : table.Indices())
+         for (auto const& idx : table.Indices() | own::views::is_index)
+            sql_builder()
+            .WriteQueryHeader<EQueryType::SelectUnique>(table, idx, os);
+
+         for (auto const& idx : table.Indices() | own::views::is_index)
             sql_builder()
               .WriteQueryHeader<EQueryType::SelectIdx>(table, idx, os);
          os << "\n";
@@ -83,9 +87,13 @@ bool TMyDictionary::CreateSQLStatementSource(std::ostream& os) const {
             .WriteQuerySource<EQueryType::DeleteAll>(table, os)
             .WriteQuerySource<EQueryType::DeletePrim>(table, os);
 
-         for(auto const& idx : table.Indices())
+         for (auto const& idx : table.Indices() | own::views::is_unique_key)
             sql_builder()
-              .WriteQuerySource<EQueryType::SelectIdx>(table, idx, os);
+               .WriteQuerySource<EQueryType::SelectUnique>(table, idx, os);
+
+         for(auto const& idx : table.Indices() | own::views::is_index)
+            sql_builder()
+               .WriteQuerySource<EQueryType::SelectIdx>(table, idx, os);
          
          os << "\n";
          }

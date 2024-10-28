@@ -51,10 +51,11 @@ concept IsTableType = TableType::template contains<ty>();
 template <EQueryType ty>
 concept IsIndexType = IndexType::template contains<ty>();
 
-template<EQueryType ty>
+//template<EQueryType ty>
+//concept always_false = false;
+
+template <typename ty>
 concept always_false = false;
-
-
 
 class Generator_SQL {
 private:
@@ -123,6 +124,8 @@ private:
 
    myStatements CreateSelectAll_Statement(TMyTable const& table) const;
    myStatements CreateSelectPrim_Statement(TMyTable const& table) const;
+   myStatements CreateSelectUniqueKey_Statement(TMyTable const& table, TMyIndices const& idx) const;
+   myStatements CreateSelectIndex_Statement(TMyTable const& table, TMyIndices const& idx) const;
    myStatements CreateUpdateAll_Statement(TMyTable const& table) const;
    myStatements CreateUpdateWithoutPrim_Statement(TMyTable const& table) const;
    myStatements CreateInsert_Statement(TMyTable const& table) const;

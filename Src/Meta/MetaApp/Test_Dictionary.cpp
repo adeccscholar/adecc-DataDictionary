@@ -155,7 +155,7 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddAttribute(5, "Notes", "Notes", "text", 0, 0, false, false, "", "", "", "notes, with additional / free information for this AddressType, not used in application")
       .AddAttribute(6, "UrgentValue", "UrgentValue", "bool", 0, 0, false, false, "", "", "", "boolean value that makes this entity of address type to a system value (cannot be changed as it is used directly by the program)")
 
-      .AddIndex("AddressType_Denotation", EMyIndexType::key, "unique / representative denotation for an addresstye as key canditate", { { 3, true } })
+      .AddIndex("AddressType_Denotation", EMyIndexType::key, "unique / representative denotation for an addresstye as key canditate", { { 2, true } })
  
       .AddRangeValue("INSERT INTO AddressTypes (ID, Denotation, Abbreviation, Description, UrgentValue) VALUES\n"
                      "    (1, 'Hauptadresse', 'HA', 'Hauptadresse für die Anwendung', 1), \n"
