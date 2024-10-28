@@ -87,14 +87,14 @@ bool TMyDictionary::CreateSQLStatementSource(std::ostream& os) const {
             .WriteQuerySource<EQueryType::DeleteAll>(table, os)
             .WriteQuerySource<EQueryType::DeletePrim>(table, os);
 
-         for (auto const& idx : table.Indices() | own::views::is_unique_key)
+         for (auto const& idx : table.Indices() | own::views::is_unique_key) {
             sql_builder()
                .WriteQuerySource<EQueryType::SelectUnique>(table, idx, os);
-
-         for(auto const& idx : table.Indices() | own::views::is_index)
+		    }
+         for(auto const& idx : table.Indices() | own::views::is_index) {
             sql_builder()
                .WriteQuerySource<EQueryType::SelectIdx>(table, idx, os);
-         
+		    }
          os << "\n";
          }
 

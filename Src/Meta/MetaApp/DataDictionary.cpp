@@ -19,7 +19,7 @@
 */
 
 #include "DataDictionary.h"
-#include "GenerateSQL.h"
+#include "GenerateSQL.h"     // order is important for .inl file 
 #include "DictionaryHelper.h"
 
 #include <sstream>
