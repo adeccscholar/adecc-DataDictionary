@@ -42,13 +42,15 @@ bool TMyDictionary::CreateSQLStatementHeader(std::ostream& os) const {
             .WriteQueryHeader<EQueryType::DeleteAll>(table, os)
             .WriteQueryHeader<EQueryType::DeletePrim>(table, os);
          os << "\n";
-         for (auto const& idx : table.Indices() | own::views::is_index)
+         for (auto const& idx : table.Indices() | own::views::is_unique_key) {
             sql_builder()
-            .WriteQueryHeader<EQueryType::SelectUnique>(table, idx, os);
+               .WriteQueryHeader<EQueryType::SelectUnique>(table, idx, os);
+            }
 
-         for (auto const& idx : table.Indices() | own::views::is_index)
+         for (auto const& idx : table.Indices() | own::views::is_index) {
             sql_builder()
-              .WriteQueryHeader<EQueryType::SelectIdx>(table, idx, os);
+               .WriteQueryHeader<EQueryType::SelectIdx>(table, idx, os);
+            }
          os << "\n";
          }
 
