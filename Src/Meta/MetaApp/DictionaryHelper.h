@@ -15,6 +15,18 @@ namespace own {
    concept own_has_indices = std::is_enum_v<decltype(std::declval<ty>().IndexType())> &&
                              std::is_same_v<decltype(std::declval<ty>().IndexType()), EMyIndexType>;
 
+   template<typename ty>
+   concept own_has_references = requires {
+                                    typename ty::myValues;
+                                    requires std::same_as<typename ty::myValues, std::pair<size_t, size_t>>;
+                                    } &&
+                                requires(ty obj) {
+                                    { obj.ReferenceType() } -> std::same_as<EMyReferenceType>;
+                                    { obj.RefTable() } -> std::same_as<std::string const&>;
+                                    { obj.Values() } -> std::same_as<std::vector<typename ty::myValues> const&>;
+                                    }&&
+                                std::is_enum_v<decltype(std::declval<ty>().ReferenceType())>;
+
    struct primary_view {
       template <std::ranges::input_range range_ty>
          requires own_has_primary<std::ranges::range_value_t<range_ty>>
@@ -72,6 +84,22 @@ namespace own {
       }
    };
 
+   struct is_reference_view {
+      template <std::ranges::input_range range_ty>
+        requires own_has_references <std::ranges::range_value_t<range_ty>>
+      auto operator () (range_ty&& r) const {
+         return std::forward<range_ty>(r) | std::views::filter([](auto const& rel) { return true; });
+            //rel.RefType() != EReferenceType::; });
+         }
+
+      template <std::ranges::input_range range_ty>
+         requires own_has_references<std::ranges::range_value_t<range_ty>>
+      friend auto operator | (range_ty&& r, is_reference_view const& filter) {
+         return filter(std::forward<range_ty>(r));
+         }
+      };
+
+
    struct is_index_view {
       template <std::ranges::input_range range_ty>
         requires own_has_indices<std::ranges::range_value_t<range_ty>>
@@ -102,12 +130,13 @@ namespace own {
 
   
    namespace views {
-      inline constexpr auto primary       = primary_view{};
-      inline constexpr auto non_primary   = non_primary_view{};
-      inline constexpr auto is_table      = is_table_view{};
-      inline constexpr auto is_view       = is_view_view{};
-      inline constexpr auto is_unique_key = is_unique_key_view{};
-      inline constexpr auto is_index      = is_index_view{};
+      inline constexpr auto primary        = primary_view{};
+      inline constexpr auto non_primary    = non_primary_view{};
+      inline constexpr auto is_table       = is_table_view{};
+      inline constexpr auto is_view        = is_view_view{};
+      inline constexpr auto is_unique_key  = is_unique_key_view{};
+      inline constexpr auto is_index       = is_index_view{};
+      inline constexpr auto is_reference   = is_reference_view{};
       }
 
 

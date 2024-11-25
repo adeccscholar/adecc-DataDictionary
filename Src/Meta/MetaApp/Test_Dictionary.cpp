@@ -77,7 +77,8 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
 
    dictionary.BaseClass("TSimplePersonBase");
    dictionary.BaseNamespace("myCorporate");
-   dictionary.PathToBase("System\\Corporate\\base.h");
+   //dictionary.PathToBase("System\\Corporate\\base.h");  // changed .. path without header file
+   dictionary.PathToBase("Base");
 
    dictionary.PersistenceClass("TPersonReader");
    dictionary.PersistenceName("person_reader");
@@ -85,18 +86,18 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
    dictionary.PersistenceServerType("TMyMSSQL");
    dictionary.PersistenceDatabase("Test_Personen");
 
-   dictionary.AddDataType("bigint", "BIGINT", false, false, "", "long long", "", "i", "long long", "", false, "BIGINT is largest integer data type for SQL Server . It uses 8 bytes of storage.");
-   dictionary.AddDataType("bool", "TINYINT", false, false, "IN (0, 1)", "bool", "", "bo", "boolean", "", false, "boolean (true = 1, false = 2) in source will transformed to TINYINT. This is the smallest integer data type and only uses 1 byte of storage. this data type is an integer value from 0 to 255.");
-   dictionary.AddDataType("char", "CHAR", true, false, "", "std::string", "<string>", "c", "", "", true, "CHAR is a fixed-sized character data type and will transformed to a std::string. Use this type when values are consistent in length. The max  size is 8,000, storing up to 8,000 ASCII characters.");
-   dictionary.AddDataType("date", "DATE", false, false, "", "std::chrono::year_month_day", "<chrono>", "da", "BasicModule::YearMonthDay", "Basic.idl", false, "date is the DATE data type which is specifies a date in SQL Server.  DATE supports dates from 0001-01-01 through 9999-12-31. Ist will transformed to a std::chrono::year_month_day which is supported from C++20. DATE supports dates from 0001-01-01 through 9999-12-31.");
-   dictionary.AddDataType("datetime", "DATE", false, false, "", "std::chrono::system_clock::time_point", "<chrono>", "dt", "BasicModule::TimePoint", "Basic.idl", false, "datetime is the DATETIME data type which specifies a date and time with fractional seconds. Ist supports dates from January 1, 1753, through December 31, 9999. the time is based on 24-hour clock. For source code  this type will interpreted as std::chrono::system_clock::time_point>");
-   dictionary.AddDataType("decimal", "DECIMAL", true, true, "", "double", "", "fl", "double", "", true, "the DECIMAL data type is an exact number with a fixed precision and scale. precision is an integer representing the total number of digits and scale is also an integer value that represents the number of decimal places. It could be transfered to an bcd type, but we use double as representing type for source code.");
-   dictionary.AddDataType("double", "FLOAT", false, false, "", "double", "", "fl", "double", "", true, "The FLOAT data type is an approximate number with floating point data equal to ieee coded values in programming (this means not all values can be represented exactly).");
-   dictionary.AddDataType("integer", "INT", false, false, "", "int", "", "i", "long", "", false, "the INT data type is an the most used integer value type in SQL Server and  uses 4 bytes of storage.  it always stores positive and negative values. The type will translated to an int type of c++.");
-   dictionary.AddDataType("smallint", "SMALLINT", false, false, "", "short int", "", "i", "short", "", false, "the SMALLINT data type is an integer value from -32,768 to 32,767 and uses 2 bytes of storage. In c++ is the short int type used to represent this data.");
-   dictionary.AddDataType("unsigned", "INT", false, false, ">= 0", "unsigned int", "", "u", "unsigned long", "", false, "the INT data type is an the most used integer value type in SQL Server and  uses 4 bytes of storage.  it always stores positive and negative values. The type will translated to an int type of c++.");
-   dictionary.AddDataType("varchar", "VARCHAR", true, false, "", "std::string", "<string>", "str", "string", "", true, "the VARCHAR data type stores variable-length character strings and is used when there is variability in the size of the data. The type may hold up to 8,000 ASCII characters of data. For c++ this datatype use std::string.");
-   dictionary.AddDataType("text", "VARCHAR(MAX)", false, false, "", "std::string", "<string>", "str", "string", "", true, "the VARCHAR(MAX) data type stores variable-length character strings and is used to store very large, i.e. max length, character data. It can hold mostly as much as 2GB of ASCII character data. For c++ this datatype use std::string.");
+   dictionary.AddDataType("bigint", "BIGINT", false, false, false, "", "long long", "", "i", "long long", "", false, "BIGINT is largest integer data type for SQL Server . It uses 8 bytes of storage.");
+   dictionary.AddDataType("bool", "TINYINT", false, false, false, "IN (0, 1)", "bool", "", "bo", "boolean", "", false, "boolean (true = 1, false = 2) in source will transformed to TINYINT. This is the smallest integer data type and only uses 1 byte of storage. this data type is an integer value from 0 to 255.");
+   dictionary.AddDataType("char", "CHAR", true, false, true, "", "std::string", "<string>", "c", "", "", true, "CHAR is a fixed-sized character data type and will transformed to a std::string. Use this type when values are consistent in length. The max  size is 8,000, storing up to 8,000 ASCII characters.");
+   dictionary.AddDataType("date", "DATE", false, false, false, "", "std::chrono::year_month_day", "<chrono>", "da", "BasicModule::YearMonthDay", "Basic.idl", false, "date is the DATE data type which is specifies a date in SQL Server.  DATE supports dates from 0001-01-01 through 9999-12-31. Ist will transformed to a std::chrono::year_month_day which is supported from C++20. DATE supports dates from 0001-01-01 through 9999-12-31.");
+   dictionary.AddDataType("datetime", "DATE", false, false, false, "", "std::chrono::system_clock::time_point", "<chrono>", "dt", "BasicModule::TimePoint", "Basic.idl", false, "datetime is the DATETIME data type which specifies a date and time with fractional seconds. Ist supports dates from January 1, 1753, through December 31, 9999. the time is based on 24-hour clock. For source code  this type will interpreted as std::chrono::system_clock::time_point>");
+   dictionary.AddDataType("decimal", "DECIMAL", true, true, false, "", "double", "", "fl", "double", "", true, "the DECIMAL data type is an exact number with a fixed precision and scale. precision is an integer representing the total number of digits and scale is also an integer value that represents the number of decimal places. It could be transfered to an bcd type, but we use double as representing type for source code.");
+   dictionary.AddDataType("double", "FLOAT", false, false, false, "", "double", "", "fl", "double", "", true, "The FLOAT data type is an approximate number with floating point data equal to ieee coded values in programming (this means not all values can be represented exactly).");
+   dictionary.AddDataType("integer", "INT", false, false, false, "", "int", "", "i", "long", "", false, "the INT data type is an the most used integer value type in SQL Server and  uses 4 bytes of storage.  it always stores positive and negative values. The type will translated to an int type of c++.");
+   dictionary.AddDataType("smallint", "SMALLINT", false, false, false, "", "short int", "", "i", "short", "", false, "the SMALLINT data type is an integer value from -32,768 to 32,767 and uses 2 bytes of storage. In c++ is the short int type used to represent this data.");
+   dictionary.AddDataType("unsigned", "INT", false, false, false, ">= 0", "unsigned int", "", "u", "unsigned long", "", false, "the INT data type is an the most used integer value type in SQL Server and  uses 4 bytes of storage.  it always stores positive and negative values. The type will translated to an int type of c++.");
+   dictionary.AddDataType("varchar", "VARCHAR", true, false, true, "", "std::string", "<string>", "str", "string", "", true, "the VARCHAR data type stores variable-length character strings and is used when there is variability in the size of the data. The type may hold up to 8,000 ASCII characters of data. For c++ this datatype use std::string.");
+   dictionary.AddDataType("text", "VARCHAR(MAX)", false, false, true, "", "std::string", "<string>", "str", "string", "", true, "the VARCHAR(MAX) data type stores variable-length character strings and is used to store very large, i.e. max length, character data. It can hold mostly as much as 2GB of ASCII character data. For c++ this datatype use std::string.");
 
    dictionary.AddNameSpace("myCorporate", "CorporateModule",
                            "namespace with the classes that are used jointly by all parts of the company",
@@ -266,10 +267,10 @@ TDictionary_Test::TDictionary_Test() : dictionary("simple person model") {
       .AddReference("Employees2JobPositions", EMyReferenceType::range, "JobPositions", "holds", "n : 1", { 2 }, "range value as domain for this attribute, possible jobpositions in company", { {9,1} })
       .AddReference("Employees2Department", EMyReferenceType::assoziation, "Departments", "works in", "n : 1", { 2 }, "assoziations between an employee to the department where she/he work", { {12,1} })
 
-      .AddIndex("Employees_PersonNumber", EMyIndexType::key, "unique personal number of a employee in company (key canditate)", { { 3, true } })
-      .AddIndex("Employees_SocialNumber", EMyIndexType::key, "extern unique number of an employee (key canditate)", { { 9, true } })
-      .AddIndex("Employees_JobSpec", EMyIndexType::undefined, "access path to search for informations about job specifications", { { 7, true } })
-      .AddIndex("Employees_Active", EMyIndexType::undefined, "access path to search / filter all active employees", { { 10, true } })
+      .AddIndex("Employees_PersonNumber", EMyIndexType::key, "unique personal number of a employee in company (key canditate)", { { 2, true } })
+      .AddIndex("Employees_SocialNumber", EMyIndexType::key, "extern unique number of an employee (key canditate)", { { 13, true } })
+      .AddIndex("Employees_JobSpec", EMyIndexType::undefined, "access path to search for informations about job specifications", { { 10, true } })
+      .AddIndex("Employees_Active", EMyIndexType::undefined, "access path to search / filter all active employees", { { 14, true } })
 
       ;
 

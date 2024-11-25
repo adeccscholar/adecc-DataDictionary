@@ -89,5 +89,8 @@
     <ClInclude Include="MyProperty.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="TypesSQLGen.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

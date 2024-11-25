@@ -70,7 +70,7 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
          }
       else if(Dictionary().UseBaseClass()) {
          os << "\n// includes for common  virtual base class\n";
-         os << std::format("#include \"{}\"\n", Dictionary().PathToBase().string());
+         os << std::format("#include \"{}\"\n", (Dictionary().PathToBase() / "BaseClass.h"s).string());
          }
 
       // write header files for compositions
@@ -97,6 +97,7 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
          << "#include <iomanip>\n" // possible std::format, but still is no need to force C++20
          << "#include <optional>\n"
          << "#include <stdexcept>\n"
+         << "#include <functional>\n"
          << "#include <map>\n"
          << "#include <vector>\n"
          << "#include <tuple>\n"  // possible to avoid this (count of primary keys && count of composed keys < 2
@@ -142,6 +143,7 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
 
       if (Dictionary().HasPersistenceClass()) {
          if (Dictionary().PersistenceNamespace().size() > 0) os << "namespace " << Dictionary().PersistenceNamespace() << " {\n";
+         os << "   class DataAccess; // helper class, later changing\n";
          os << "   class " << Dictionary().PersistenceClass() << ";\n";
          if (Dictionary().PersistenceNamespace().size() > 0) os << "   }\n\n";
          }
@@ -191,7 +193,12 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
          }
       os << " {\n";
 
-      if (Dictionary().HasPersistenceClass()) os << "   friend class " << Dictionary().FullPersistenceClass() << ";\n";
+      if (Dictionary().HasPersistenceClass()) {
+         os << "   friend class ";
+         if (Dictionary().PersistenceNamespace().size() > 0) os << Dictionary().PersistenceNamespace() << "::";
+         os << "DataAccess;";
+         os << "   friend class " << Dictionary().FullPersistenceClass() << ";\n";
+         }
 
 
       // -----------------------------------------------------------------------------------------------
@@ -259,7 +266,7 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
          // initialize constructor for the primary_key type
          std::string strAttr = std::get<1>(prim_attr[0]).Prefix() + std::get<0>(prim_attr[0]).Name();
          os << std::format("{0}{1}primary_key({2}{3} p{4}", my_indent(4),
-                                                         prim_attr.size() > 1 ? "" : "explicit ",
+                                                         prim_attr.size() > 1 ? "" : "/* explicit */",
                                                          std::get<1>(prim_attr[0]).SourceType(),
                                                          (std::get<1>(prim_attr[0]).UseReference() ? " const&" : ""),
                                                          std::get<0>(prim_attr[0]).Name());
@@ -351,10 +358,11 @@ bool TMyTable::CreateHeader(std::ostream& os) const {
          }
       */
 
-      // ------------------ create map and vector types for this class ---------------------------------
-      // -----------------------------------------------------------------------------------------------
-      os << my_indent(2) << "using container_ty = std::map<primary_key, " << ClassName() << ">;\n";
-      os << my_indent(2) << "using vector_ty    = std::vector<" << ClassName() << ">;\n\n";
+      // --------------- create function, map and vector types for this class ---------------------------
+      // ------------------------------------------------------------------------------------------------
+      os << my_indent(2) << "using func_ty = std::function<bool(" << ClassName() << "&&)>;\n"
+         << my_indent(2) << "using container_ty = std::map<primary_key, " << ClassName() << ">;\n"
+         << my_indent(2) << "using vector_ty    = std::vector<" << ClassName() << ">;\n\n";
 
       // ---------------- generate datatypes for composed tables ---------------------------------------
       // Attention: Part of relationships as aggregation to relations are difficult and should treat other

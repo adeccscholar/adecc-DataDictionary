@@ -45,6 +45,6 @@ inline void WriteSource(myStatements const& stmts, std::ostream& os) {
       case 1: 
          os << std::format("     \"{}\";", stmts.back());
          break;
+      }
    }
-}
 

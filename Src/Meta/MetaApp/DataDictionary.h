@@ -13,10 +13,12 @@
 */
 
 #include "GenerateSQL.h"
+#include "TypesSQLGen.h"
 
 #include <iostream>
 #include <iomanip>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <map>
 #include <set>
@@ -28,6 +30,7 @@
 
 namespace fs = std::filesystem;
 using namespace std::string_literals;
+using namespace std::string_view_literals;
 
 inline std::string CurrentTimeStamp(std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now()) {
    auto const cz_ts = std::chrono::current_zone()->to_local(now);
@@ -74,7 +77,7 @@ class TMyAttribute;
 
 class TMyDatatype {
 private:
-   using myData = std::tuple<std::string, std::string, bool, bool, std::string, std::string, std::string, std::string, std::string, std::string, bool, std::string>;
+   using myData = std::tuple<std::string, std::string, bool, bool, bool, std::string, std::string, std::string, std::string, std::string, std::string, bool, std::string>;
    myData data;
    TMyDictionary const& dictionary;
 public:
@@ -85,12 +88,13 @@ public:
 
    auto operator <=> (TMyDatatype const& other) const { return data <=> other.data; }
 
-   TMyDatatype(TMyDictionary const& dict, std::string const& pDataType, std::string const& pDatabaseType, bool pUseLen, bool pUseScale,
-               std::string const& pCheck, std::string const& pSourceType, std::string const& pHeader, std::string const& pPrefix,
+   TMyDatatype(TMyDictionary const& dict, std::string const& pDataType, std::string const& pDatabaseType, 
+               bool pUseLen, bool pUseScale, bool pWithLike, std::string const& pCheck, 
+               std::string const& pSourceType, std::string const& pHeader, std::string const& pPrefix,
                std::string const& pCorbaType, std::string const& pCorbaModule,
                bool pUseReference, std::string const& pComment) :
       dictionary { dict },
-      data{ myData { pDataType, pDatabaseType, pUseLen, pUseScale, pCheck, pSourceType, pHeader, pPrefix, pCorbaType, pCorbaModule, pUseReference, pComment } } { }
+      data{ myData { pDataType, pDatabaseType, pUseLen, pUseScale, pWithLike, pCheck, pSourceType, pHeader, pPrefix, pCorbaType, pCorbaModule, pUseReference, pComment } } { }
 
    auto const& GetKey() const { return std::get<0>(data); }
 
@@ -98,19 +102,20 @@ public:
    std::string const& DatabaseType() const { return std::get<1>(data); }
    bool               UseLen() const { return std::get<2>(data); }
    bool               UseScale() const { return std::get<3>(data); }
-   std::string const& CheckSeq() const { return std::get<4>(data); }
+   bool               WithLike() const { return std::get<4>(data); }
+   std::string const& CheckSeq() const { return std::get<5>(data); }
 
-   std::string const& SourceType() const { return std::get<5>(data); }
-   std::string const& Headerfile() const { return std::get<6>(data); }
+   std::string const& SourceType() const { return std::get<6>(data); }
+   std::string const& Headerfile() const { return std::get<7>(data); }
 
-   std::string const& Prefix() const { return std::get<7>(data); }
+   std::string const& Prefix() const { return std::get<8>(data); }
    
-   std::string const& CorbaType() const { return std::get<8>(data);  }
-   std::string const& CorbaModule() const { return std::get<9>(data); }
+   std::string const& CorbaType() const { return std::get<9>(data);  }
+   std::string const& CorbaModule() const { return std::get<10>(data); }
 
 
-   bool               UseReference() const { return std::get<10>(data); }
-   std::string const& Comment() const { return std::get<11>(data); }
+   bool               UseReference() const { return std::get<11>(data); }
+   std::string const& Comment() const { return std::get<12>(data); }
 
 };
 
@@ -142,6 +147,10 @@ public:
       table { pTable },
       data{ myData { pID, pName, pDBName, pDataType, pLen, pScale, pNotNull, pPrimary, pCheck, pCheckKind, pInit, pComputed, pCalcKind, pDenotation, "", "" } } { }
 
+   // Einschub, Darstellung der Möglichkeiten
+   operator size_t() { return ID(); }
+   operator std::string() { return DBName(); }
+
    size_t              ID() const { return std::get<0>(data); }
    std::string const&  Name() const { return std::get<1>(data); }
    std::string const&  DBName() const { return std::get<2>(data); }
@@ -168,6 +177,7 @@ public:
    TMyAttribute& AddDescription(std::string const& pText);
    TMyAttribute& AddComment(std::string const& pText);
 
+   TMyDatatype const& GetDataType() const;
 private:
    std::string& Denotation() { return std::get<13>(data); }
    std::string& Description() { return std::get<14>(data); }
@@ -182,10 +192,11 @@ enum class EMyReferenceType : uint32_t { undefined = 0, generalization, range, a
 
 /// \brief datatype for references of tables
 class TMyReferences {
+public:
    /// \\brief internal type for pairs of ids with references
    using myValues = std::pair</** \brief attribute in own table */        size_t, 
                               /** \brief attribute in referenced table */ size_t>;
-
+private:
    /// \\brief internal type for all attributes in this class
    using myData = std::tuple<std::string, EMyReferenceType, std::string, std::string, 
                             std::string, std::optional<size_t>, std::string, std::vector<myValues>>;
@@ -436,8 +447,6 @@ public:
    /// {
    bool CreateHeader(std::ostream& os) const;
    bool CreateSource(std::ostream& os, bool boInline = false) const;
-   bool CreateReadData(std::ostream& os);
-   bool CreateWriteData(std::ostream& os);
    /// }
 
    bool CreateDox(std::ostream& os) const;
@@ -586,9 +595,9 @@ public:
    \{ */
    TMyDatatype const& FindDataType(std::string const& strDataType) const;
 
-   TMyDatatype& AddDataType(std::string const& pDataType, std::string const& pDatabaseType, bool pUseLen, bool pUseScale,
-                            std::string const& pCheck, std::string const& pSourceType, std::string const& pHeader, 
-                            std::string const& pPrefix, 
+   TMyDatatype& AddDataType(std::string const& pDataType, std::string const& pDatabaseType, 
+                            bool pUseLen, bool pUseScale, bool pWithLike, std::string const& pCheck, 
+                            std::string const& pSourceType, std::string const& pHeader, std::string const& pPrefix, 
                             std::string const& pCorbaType, std::string const& pCorbaModule,
                             bool pUseReference, std::string const& pComment);
    /// \}
@@ -620,6 +629,7 @@ public:
    void Create_Doxygen_SQL(std::ostream&) const;
 
    bool CreateBaseHeader(std::ostream& out = std::cout) const;
+   bool CreateBaseDefintionFile(std::ostream& out = std::cout) const;
 
    bool CreateSQLStatementHeader(std::ostream& out = std::cout) const;
    bool CreateSQLStatementSource(std::ostream& out = std::cout) const;
@@ -638,12 +648,52 @@ public:
 
    Generator_SQL const& sql_builder() const { return buildSQLRef; }
 
+  // template <enum EQueryType type>
+  // constexpr std::string_view GetMethodName() const;
+
+
    void Test() const;
 
 private:
    std::vector<std::tuple<std::string, std::string, std::vector<size_t>>> GetCompositions(TMyTable const&) const;
    std::vector<std::tuple<std::string, std::string, std::string, std::string, std::vector<size_t>>> GetRangeValues(TMyTable const& table) const;
-};
+
+   static inline std::map<EQueryType, std::string_view> strSQLNames = {
+            { EQueryType::SelectAll,          "strSQLSelect{}_All"sv },
+            { EQueryType::SelectPrim,         "strSQLSelect{}_Detail"sv },
+            { EQueryType::UpdateAll,          "strSQLUpdate{}_WithPrim"sv },
+            { EQueryType::UpdateWithoutPrims, "strSQLUpdate{}_WithoutPrim"sv },
+            { EQueryType::DeleteAll,          "strSQLDelete{}_All"sv },
+            { EQueryType::DeletePrim,         "strSQLDelete{}_Detail"sv },
+            { EQueryType::Insert,             "strSQLInsert{}"sv },
+            // -----------------------------------------------------------------
+            { EQueryType::SelectUnique,       "strSQLSelect{}_Unq{}"sv },
+            { EQueryType::SelectIdx,          "strSQLSelect{}_Idx{}"sv },
+            // -----------------------------------------------------------------
+            { EQueryType::SelectRelation,     "strSQLSelect{}_Ref{}"sv },
+            { EQueryType::SelectRevRelation,  "strSQLSelect{}_RevRef{}"sv }
+         };
+   };
+
+template <enum EQueryType type>
+inline constexpr std::string_view GetSQLQueryName() {
+   // ----------------------------------------------------------------------------------------------
+   if      constexpr (type == EQueryType::SelectAll)          return "strSQLSelect{}_All"sv;
+   else if constexpr (type == EQueryType::SelectPrim)         return "strSQLSelect{}_Detail"sv;
+   else if constexpr (type == EQueryType::UpdateAll)          return "strSQLUpdate{}_WithPrim"sv;
+   else if constexpr (type == EQueryType::UpdateWithoutPrims) return "strSQLUpdate{}_WithoutPrim"sv;
+   else if constexpr (type == EQueryType::DeleteAll)          return "strSQLDelete{}_All"sv;
+   else if constexpr (type == EQueryType::DeletePrim)         return "strSQLDelete{}_Detail"sv;
+   else if constexpr (type == EQueryType::Insert)             return "strSQLInsert{}"sv;
+   // ---------------------------------------------------------------------------------------------
+   else if constexpr (type == EQueryType::SelectUnique)       return "strSQLSelect{}_Unq{}"sv;
+   else if constexpr (type == EQueryType::SelectIdx)          return "strSQLSelect{}_Idx{}"sv;
+   // ---------------------------------------------------------------------------------------------
+   else if constexpr (type == EQueryType::SelectRelation)     return "strSQLSelect{}_Ref{}"sv;
+   else if constexpr (type == EQueryType::SelectRevRelation)  return "strSQLSelect{}_RevRef{}"sv;
+   // ---------------------------------------------------------------------------------------------
+   else static_assert(always_false<type>, "this type isn't supported with this function");
+   }
 
 #include "GenerateSQL.inl"
 

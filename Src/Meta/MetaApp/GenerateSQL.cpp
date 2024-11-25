@@ -371,7 +371,7 @@ myStatements Generator_SQL::CreateView_Statements(TMyTable const& table) const {
 
 using attr_filter_func = std::function<bool(TMyAttribute const&)>;
 
-enum class Attr_Mode : uint32_t { none, assign, like };
+enum class Attr_Mode : uint32_t { undefined, none, assign, like };
 
 //myStatements, stream, prefix, intro, first, follow, separator, Abschluss, länge, zuweisung, function
 //                                0                1                 2            3            4            5        
@@ -386,15 +386,27 @@ auto part_detail = [](attr_filter_func f, int l, Attr_Mode m, std::string&& p1, 
 
 using myAttrWithParam = std::vector<std::tuple<TMyAttribute, std::string>>;
 
+template <typename ty>
+concept AttributeValue = requires(ty t) {
+   requires std::is_same_v<ty, TMyAttribute> ||
+            std::is_same_v<ty, std::tuple<TMyAttribute, std::string>>;
+   };
+
+template<typename ty>
+concept AttributeOnly = requires(ty t) {
+   typename ty::value_type;
+   requires  std::is_same_v<typename ty::value_type, TMyAttribute>;
+   };
+
 template<typename ty>
 concept AttributeContainer = requires(ty t) {
    typename ty::value_type;  
    requires  std::is_same_v<typename ty::value_type, TMyAttribute> ||
-            (std::is_same_v<std::tuple_element_t<0, typename ty::value_type>, TMyAttribute>);
+            (std::is_same_v<std::tuple_element_t<0, typename ty::value_type>, TMyAttribute> &&
+             std::is_convertible_v<std::tuple_element_t<1, typename ty::value_type>, std::string>);
    };
 
 template <size_t SIZE>
-//myStatements CreateStatement(std::array<part_data, SIZE>& parts, myAttributes const& all_attributes) {
 myStatements CreateStatement(std::array<part_data, SIZE>& parts, AttributeContainer auto const& all_attributes) {
    static_assert(SIZE != 0, "invalid specification of SIZE");
 
@@ -403,15 +415,19 @@ myStatements CreateStatement(std::array<part_data, SIZE>& parts, AttributeContai
    using attr_func = attr_para_func; // std::variant<attr_only_func, attr_para_func>;
    
    static std::map<Attr_Mode, attr_func> attr_rules = {
-         { Attr_Mode::none,   [](std::string const& prefix, std::string const& attribute, std::string const& parameter, size_t width) -> std::string {
+         { Attr_Mode::undefined, [](std::string const&, std::string const&, std::string const& , size_t) -> std::string {
+                                                 throw std::runtime_error("undefined rule for attribute line");
+                                                 }
+         },
+         { Attr_Mode::none,      [](std::string const& prefix, std::string const& attribute, std::string const& parameter, size_t width) -> std::string {
                                                  return std::format("{0:}{1:<{2}}", prefix, attribute, width);
                                                  } 
          },
-         { Attr_Mode::assign, [](std::string const& prefix, std::string const& attribute, std::string const& parameter, size_t width) -> std::string {
+         { Attr_Mode::assign,    [](std::string const& prefix, std::string const& attribute, std::string const& parameter, size_t width) -> std::string {
                                                  return std::format("{1:<{3}} = {0:}{2:}", prefix, attribute, parameter, width);
                                                  } 
          },
-         { Attr_Mode::like,   [](std::string const& prefix, std::string const& attribute, std::string const& parameter, size_t width) -> std::string {
+         { Attr_Mode::like,      [](std::string const& prefix, std::string const& attribute, std::string const& parameter, size_t width) -> std::string {
                                                  return std::format("{1:<{3}} LIKE {0:}{2:}", prefix, attribute, parameter, width);
                                                  } 
          }
@@ -420,9 +436,18 @@ myStatements CreateStatement(std::array<part_data, SIZE>& parts, AttributeContai
    if (all_attributes.size() == 0) [[unlikely]] return { };
    else {
       for (auto& part : parts) {
-         auto attributes = all_attributes | std::views::filter([&part](auto const& a) { return std::get<10>(part)(a); })
-                                          | std::ranges::to<std::vector>();
-      
+         auto attributes = [&all_attributes, &part]() {
+               using used_type = std::remove_cvref_t<decltype(all_attributes)>;
+               if constexpr (AttributeOnly<used_type>) {
+                  return all_attributes | std::views::filter([&part](auto const& a) { return std::get<10>(part)(a); })
+                                        | std::ranges::to<std::vector>();
+                  }
+               else {
+                  return all_attributes | std::views::filter([&part](auto const& a) { return std::get<10>(part)(std::get<0>(a)); })
+                                        | std::ranges::to<std::vector>();
+                  }
+               }();
+
          auto stmts  = Property([&part]() -> myStatements&       { return std::get<0>(part);  });
          auto stream = Property([&part]() -> std::ostringstream& { return std::get<1>(part);  });
          auto empty  = Property([&part]() -> bool                { return std::get<1>(part).str().size() == 0;  });
@@ -441,7 +466,15 @@ myStatements CreateStatement(std::array<part_data, SIZE>& parts, AttributeContai
             auto sepa      = [&part]() -> std::string const& { return std::get<6>(part);  };
             auto closer    = [&part]() -> std::string const& { return std::get<7>(part);  };
             auto to_long   = [&part]() -> bool               { return std::get<1>(part).str().size() > std::get<8>(part);  };
-            auto assign    = [&part]()-> Attr_Mode            { return std::get<9>(part);  };
+            auto assign    = [&part]() -> Attr_Mode          { return std::get<9>(part);  };
+
+            auto rule_type = [assign](AttributeValue auto const& attr) -> Attr_Mode {
+               using used_type = std::remove_cvref_t<decltype(attr)>;
+               if constexpr (std::is_same_v<used_type, TMyAttribute>)
+                  return assign() != Attr_Mode::like ? assign() : (attr.GetDataType().WithLike() ? Attr_Mode::like : Attr_Mode::assign);
+               else
+                  return assign() != Attr_Mode::like ? assign() : (std::get<0>(attr).GetDataType().WithLike() ? Attr_Mode::like : Attr_Mode::assign);
+               };
 
             static constexpr auto attr_param_name_impl = [](auto const& para, bool return_dbname) {
                using value_type = std::remove_cvref_t<decltype(para)>;
@@ -476,28 +509,32 @@ myStatements CreateStatement(std::array<part_data, SIZE>& parts, AttributeContai
                           else                        return 0u;      
                           }();
 
-            stream << std::format("{}{}", first(), attr_rules[assign()](prefix(), attr_name(*std::begin(attributes)), param_name(*std::begin(attributes)), maxLengthAttr));
+            // reducing the scope for first attribute
+            {
+               auto attr = *std::begin(attributes);
+               stream << std::format("{}{}", first(), attr_rules[rule_type(attr)](prefix(), attr_name(attr), param_name(attr), maxLengthAttr));
+            }
 
             if (attributes.size() > 1) [[likely]] {
                for (auto const& attr : attributes | std::views::drop(1) | std::views::take(attributes.size() - 2)) {
                   if (to_long()) {
                      stream << sepa();
                      stmts += get;
-
-                     stream << std::format("{}{}", follow(), attr_rules[assign()](prefix(), attr_name(attr), param_name(attr), maxLengthAttr));
+                     stream << std::format("{}{}", follow(), attr_rules[rule_type(attr)](prefix(), attr_name(attr), param_name(attr), maxLengthAttr));
                      }
                   else [[likely]] {
-                     stream << std::format("{}{}", sepa(), attr_rules[assign()](prefix(), attr_name(attr), param_name(attr), maxLengthAttr));
+                     stream << std::format("{}{}", sepa(), attr_rules[rule_type(attr)](prefix(), attr_name(attr), param_name(attr), maxLengthAttr));
                      }
                   }
 
+               auto attr = attributes.back();
                if (to_long()) {
                   stream << sepa();
                   stmts += get;
-                  stream << std::format("{}{}{}", follow(), attr_rules[assign()](prefix(), attr_name(attributes.back()), param_name(attributes.back()), maxLengthAttr), closer());
+                  stream << std::format("{}{}{}", follow(), attr_rules[rule_type(attr)](prefix(), attr_name(attr), param_name(attr), maxLengthAttr), closer());
                   }
                else {
-                  stream << std::format("{}{}{}", sepa(), attr_rules[assign()](prefix(), attr_name(attributes.back()), param_name(attributes.back()), maxLengthAttr), closer());
+                  stream << std::format("{}{}{}", sepa(), attr_rules[rule_type(attr)](prefix(), attr_name(attributes.back()), param_name(attributes.back()), maxLengthAttr), closer());
                   }
                }
             }
@@ -564,12 +601,14 @@ myStatements Generator_SQL::CreateSelectUniqueKey_Statement(TMyTable const& tabl
 
 myStatements Generator_SQL::CreateSelectIndex_Statement(TMyTable const& table, TMyIndices const& idx) const {
    auto vals = idx.Values() | own::views::first | std::ranges::to<std::vector>();
-   auto idx_lst = std::views::zip(std::views::iota(size_t{ 1 }), table.Attributes())
-      | std::views::filter([&vals](auto const& p) {
-      return std::ranges::find(vals, std::get<0>(p)) != vals.end();
-         })
-      | own::views::second
-      | std::ranges::to<std::vector>();
+   auto idx_lst = //std::views::zip(std::views::iota(size_t{ 1 }), table.Attributes())
+                   table.Attributes() | std::views::transform([](auto const& p) {
+                                  return std::make_tuple(p.ID(), p); })
+                   | std::views::filter([&vals](auto const& p) {
+                             return std::ranges::find(vals, std::get<0>(p)) != vals.end();
+                             })
+                   | own::views::second
+                   | std::ranges::to<std::vector>();
 
    auto GetAll = [](TMyAttribute const& a) -> bool { return true;  };
    auto GetNone = [](TMyAttribute const& a) -> bool { return false;  };
@@ -586,9 +625,94 @@ myStatements Generator_SQL::CreateSelectIndex_Statement(TMyTable const& table, T
    return CreateStatement(parts, table.Attributes());
    }
 
+myStatements Generator_SQL::CreateSelectReference_Statement(TMyTable const& table, TMyReferences const& ref) const {
+   auto const& refVals = ref.Values();
+   auto const& refAttr = table.Dictionary().FindTable(ref.RefTable()).Attributes();
+   
+   auto used_attributes = table.Attributes() 
+                          | std::views::transform([&ref, &refVals, refAttr](auto a) -> std::tuple<TMyAttribute, std::string> {
+                               if(auto it = std::ranges::find_if(refVals, [a](auto p) { return std::get<0>(p) == a.ID(); }); it != refVals.end()) {
+                                  if (auto it1 = std::ranges::find_if(refAttr, [&ref, &a, &it](auto ra) { return ra.ID() == std::get<1>(*it); }); it1 != refAttr.end()) {
+                                     return std::make_tuple(a, it1->DBName());
+                                     }
+                                   else {
+                                      throw std::runtime_error("unexpected combination in reference in ref "s + ref.Name());
+                                      }
+                                   }
+                               else {
+                                  return std::make_tuple(a, ""s);
+                                  }
+                               })
+                          | std::ranges::to<std::vector>();
+
+   auto vals = refVals | own::views::first | std::ranges::to<std::vector>();
+
+   auto GetAll = [](TMyAttribute const& a) -> bool { return true;  };
+   auto GetNone = [](TMyAttribute const& a) -> bool { return false;  };
+
+   auto GetRef = [&vals](TMyAttribute const& a) -> bool { return std::ranges::find_if(vals, [&a](auto const& c) {
+      return a.ID() == c;
+      }) != vals.end();  };
+
+
+
+   std::array<part_data, 3> parts{
+        part_detail(GetAll,  60, Attr_Mode::none,    ""s,  ""s, "SELECT "s,  "       "s, ", "s, ""s),
+        part_detail(GetNone, 60, Attr_Mode::none,    ""s,  std::format("FROM {}", table.FullyQualifiedSQLName()), ""s, ""s,  ""s, ""s),
+        part_detail(GetRef,   0, Attr_Mode::assign,   ":key"s,  ""s, "WHERE "s, "      "s,  " AND"s, ""s)
+      };
+
+   return CreateStatement(parts, used_attributes); 
+   }
+
+myStatements Generator_SQL::CreateSelectRevReference_Statement(TMyTable const& table, TMyReferences const& ref) const {
+   auto refVals = ref.Values() | std::views::transform([](auto p) {
+           return std::make_pair(std::get<1>(p), std::get<0>(p));
+           });
+   auto const& refAttr = ref.Table().Attributes();
+
+   auto used_attributes = table.Attributes()
+                          | std::views::transform([&ref, &refVals, refAttr](auto a) -> std::tuple<TMyAttribute, std::string> {
+                             if(auto it = std::ranges::find_if(refVals, [a](auto p) { return std::get<0>(p) == a.ID(); }); it != refVals.end()) {
+                                if (auto it1 = std::ranges::find_if(refAttr, [&ref, &a, &it](auto ra) { return ra.ID() == std::get<1>(*it); }); it1 != refAttr.end()) {
+                                   return std::make_tuple(a, it1->DBName());
+                                   }
+                                else {
+                                   throw std::runtime_error("unexpected combination in reference in ref "s + ref.Name());
+                                   }
+                                }
+                             else {
+                                return std::make_tuple(a, ""s);
+                                }
+                             })
+                          | std::ranges::to<std::vector>();
+
+   auto vals = refVals | own::views::first | std::ranges::to<std::vector>();
+
+
+   auto GetAll = [](TMyAttribute const& a) -> bool { return true;  };
+   auto GetNone = [](TMyAttribute const& a) -> bool { return false;  };
+   auto GetRef = [&vals](TMyAttribute const& a) -> bool { return std::ranges::find_if(vals, [&a](auto const& c) {
+         return a.ID() == c;
+         }) != vals.end();  };
+
+
+   std::array<part_data, 3> parts {
+        part_detail(GetAll,  60, Attr_Mode::none,    ""s,  ""s, "SELECT "s,  "       "s, ", "s, ""s),
+        part_detail(GetNone, 60, Attr_Mode::none,    ""s,  std::format("FROM {}", table.FullyQualifiedSQLName()), ""s, ""s,  ""s, ""s),
+        part_detail(GetRef,   0, Attr_Mode::like,   ":key"s,  ""s, "WHERE "s, "      "s,  " AND"s, ""s)
+      };
+
+   return CreateStatement(parts, used_attributes);
+}
+
+
+// --------------------------------------------------------------------------------------------------------------------
+// create the insert statement for a table 
+// --------------------------------------------------------------------------------------------------------------------
 
 myStatements Generator_SQL::CreateInsert_Statement(TMyTable const& table) const {
-   auto GetAll = [](TMyAttribute const& a) -> bool { return true;  };
+   auto GetAll = [](TMyAttribute const& a) -> bool { return !a.IsComputed();  };
    std::array<part_data, 2> parts {
           part_detail (GetAll, 60, Attr_Mode::none, ""s,  std::format("INSERT INTO {} ", table.FullyQualifiedSQLName()), "       ("s,  "        "s, ","s, ")"s ),
           part_detail (GetAll, 60, Attr_Mode::none, ":"s, ""s,                                                           "VALUES ("s,  "        "s, ","s, ")"s )
@@ -599,7 +723,7 @@ myStatements Generator_SQL::CreateInsert_Statement(TMyTable const& table) const 
 
 
 myStatements Generator_SQL::CreateUpdateAll_Statement(TMyTable const& table) const {
-   auto GetAll = [](TMyAttribute const& a) -> bool { return true;  };
+   auto GetAll = [](TMyAttribute const& a) -> bool { return !a.IsComputed();  };
    auto GetNone = [](TMyAttribute const& a) -> bool { return false;  };
    auto GetPrim = [](TMyAttribute const& a) -> bool { return a.Primary();  };
 
@@ -613,7 +737,7 @@ myStatements Generator_SQL::CreateUpdateAll_Statement(TMyTable const& table) con
    }
 
 myStatements Generator_SQL::CreateUpdateWithoutPrim_Statement(TMyTable const& table) const {
-   auto GetNoPrim = [](TMyAttribute const& a) -> bool { return !a.Primary();  };
+   auto GetNoPrim = [](TMyAttribute const& a) -> bool { return !a.Primary() && !a.IsComputed();  };
    auto GetNone   = [](TMyAttribute const& a) -> bool { return false;  };
    auto GetPrim   = [](TMyAttribute const& a) -> bool { return a.Primary();  };
 

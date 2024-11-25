@@ -140,6 +140,10 @@ std::string TMyAttribute::Comment_Attribute() const {
       }
    }
 
+TMyDatatype const& TMyAttribute::GetDataType() const {
+   return Table().Dictionary().FindDataType(DataType());
+   }
+
 // TMyReferences
 
 std::string TMyReferences::ReferenceTypeTxt() const {
@@ -402,12 +406,12 @@ TMyDatatype const& TMyDictionary::FindDataType(std::string const& strDataType) c
    else return it->second;
    }
 
-TMyDatatype& TMyDictionary::AddDataType(std::string const& pDataType, std::string const& pDatabaseType, bool pUseLen, bool pUseScale,
-                                        std::string const& pCheck, std::string const& pSourceType, std::string const& pHeader, 
-                                        std::string const& pPrefix, 
+TMyDatatype& TMyDictionary::AddDataType(std::string const& pDataType, std::string const& pDatabaseType, 
+                                        bool pUseLen, bool pUseScale, bool pWithLike, std::string const& pCheck, 
+                                        std::string const& pSourceType, std::string const& pHeader, std::string const& pPrefix, 
                                         std::string const& pCorbaType, std::string const& pCorbaModule,
                                         bool pUseReference, std::string const& pComment) {
-   TMyDatatype datatype(*this, pDataType, pDatabaseType, pUseLen, pUseScale, pCheck, pSourceType, pHeader, pPrefix, 
+   TMyDatatype datatype(*this, pDataType, pDatabaseType, pUseLen, pUseScale, pWithLike, pCheck, pSourceType, pHeader, pPrefix,
                                pCorbaType, pCorbaModule, pUseReference, pComment);
 
    if (auto [val, success] = datatypes.emplace(pDataType, std::move(datatype)); !success) [[unlikely]]
@@ -566,15 +570,26 @@ void  TMyDictionary::Create_All(std::ostream& out, std::ostream& err) const {
 
       out << "\ncreate source files in directory: " << SourcePath().string() << '\n';
 
+      // 
+
+      auto srcBasePath = SourcePath() / PathToBase();
+      fs::create_directories(srcBasePath);
+      auto srcBaseDefinitionFile = srcBasePath / "BaseDefinitions.h"s;
+      std::ofstream of_base_definitions(srcBaseDefinitionFile);
+      if (of_base_definitions) {
+         CreateBaseDefintionFile(of_base_definitions);
+         of_base_definitions.close();
+         convertToUTF8WithBOM(srcBaseDefinitionFile);
+         }
+
       // ---------create base header when used ----------------------------
       if(UseBaseClass()) {
-         auto srcPath = SourcePath() / PathToBase();
-         fs::create_directories(srcPath.parent_path());
-         std::ofstream of_base(srcPath);
+         auto srcBaseClassFile = srcBasePath / "BaseClass.h"s;
+         std::ofstream of_base(srcBaseClassFile);
          if(of_base) {
             CreateBaseHeader(of_base);
             of_base.close();
-            convertToUTF8WithBOM(srcPath);
+            convertToUTF8WithBOM(srcBaseClassFile);
             }
          }
  
@@ -688,6 +703,162 @@ void  TMyDictionary::Create_All(std::ostream& out, std::ostream& err) const {
       err << ex.what() << '\n';
       }
    }
+
+bool TMyDictionary::CreateBaseDefintionFile(std::ostream& out) const {
+
+   static std::vector<std::string> strBaseDefinition = {
+      "#pragma once"s,
+      ""s,
+      "#include <map>"s,
+      "#include <vector>"s,
+      "#include <set>"s,
+      //"#include <array>"s,
+      //"#include <span>"s,
+      "#include <utility>"s,
+      "#include <ranges>"
+      ""s,
+      "namespace own {",
+      ""s,
+      "   // --------------------------------------------------------------------------"s,
+      "   template <typename ty, typename = void>"s,
+      "   struct is_map : std::false_type {};"s,
+      ""s,
+      "   template <typename key_ty, typename value_ty, typename compare_ty, typename allocator_ty>"s,
+      "   struct is_map<std::map<key_ty, value_ty, compare_ty, allocator_ty>> : std::true_type {};"s,
+      ""s,
+      "   // --------------------------------------------------------------------------"s,
+      "   template <typename ty, typename = void>"s,
+      "   struct is_vector : std::false_type {};"s,
+      ""s,
+      "   template <typename ty, typename alloc_ty>"s,
+      "   struct is_vector<std::vector<ty, alloc_ty>> : std::true_type {};"s,
+      ""s,
+      "   // --------------------------------------------------------------------------"s,
+      "   template <typename ty, typename = void>"s,
+      "   struct is_set : std::false_type {};"s,
+      ""s,
+      "   template <typename ty, typename compare_ty, typename alloc_ty>"s,
+      "   struct is_set<std::set<ty, compare_ty, alloc_ty>> : std::true_type {};"s,
+      ""s,
+      "   // --------------------------------------------------------------------------"s,
+      "   template <typename ty, typename = void>"s,
+      "   struct is_span : std::false_type {};"s,
+      ""s,
+      "   template <typename ty, std::size_t Extent>"s,
+      "   struct is_span<std::span<ty, Extent>> : std::true_type {};"s,
+      ""s,
+      "   // --------------------------------------------------------------------------"s,
+      "   template <typename ty>"s,
+      "   struct is_array : std::false_type {};"s,
+      ""s,
+      "   template <typename ty, std::size_t N>"s,
+      "   struct is_array<std::array<ty, N>> : std::true_type {};"s,
+      ""s,
+      "   // ----------------------------------------------------------------------------"s,
+      "   template <typename ty>"s,
+      "   struct is_pair : std::false_type {};"s,
+      ""s,
+      "   template <typename first_ty, typename second_ty>"s,
+      "   struct is_pair<std::pair<first_ty, second_ty>> : std::true_type {};"s,
+      ""s,
+      "   // ----------------------------------------------------------------------------"s,
+      "   template <typename, typename = void>"s,
+      "   struct has_value_type : std::false_type {};"s,
+      ""s,
+      "   template <typename ty>"s,
+      "   struct has_value_type<ty, std::void_t<typename ty::value_type>> : std::true_type {};"s,
+      ""s,
+      "   // ----------------------------------------------------------------------------"s,
+      "   template <typename ty>"s,
+      "   constexpr bool is_vector_v = is_vector<ty>::value;"s,
+      ""s,
+      "   template <typename ty>"s,
+      "   constexpr bool is_set_v = is_set<ty>::value;"s,
+      ""s,
+      "   template <typename ty>"s,
+      "   constexpr bool is_map_v = is_map<ty>::value;"s,
+      ""s,
+      "   // ----------------------------------------------------------------------------"s,
+      "   template <typename ty>"s,
+      "   concept always_false = false;"s,
+      ""s,
+      "   // ----------------------------------------------------------------------------"s,
+      "   template <typename ty, typename _ = void>"s,
+      "   struct used_type_for_container;"s,
+      ""s,
+      "   template <typename ty>"s,
+      "   struct used_type_for_container<ty, std::enable_if_t<is_vector<ty>::value>> {"s,
+      "      using type = typename ty::value_type;"s,
+      "      };"s,
+      ""s,
+      "   template <typename ty>"s,
+      "   struct used_type_for_container<ty, std::enable_if_t<is_set<ty>::value>> {"s,
+      "      using type = typename ty::key_type;"s,
+      "      };"s,
+      ""s,
+      "   template <typename ty>"s,
+      "   struct used_type_for_container<ty, std::enable_if_t<is_map<ty>::value>> {"s,
+      "      using type = typename ty::mapped_type;"s,
+      "      };"s,
+      ""s,
+      "   template <typename ty>"s,
+      "   using used_type_t = typename used_type_for_container<ty>::type;"s,
+      ""s,
+      "   // ----------------------------------------------------------------------------"s,
+      "   struct first_view {"s,
+      "      template <std::ranges::input_range range_ty>"s,
+      "      auto operator () (range_ty&& r) const {"s,
+      "         return std::forward<range_ty>(r) | std::views::transform([](auto const& e) { return std::get<0>(e); });"s,
+      "         }"s,
+      ""s,
+      "      template <std::ranges::input_range range_ty>"s,
+      "      friend auto operator | (range_ty&& r, first_view const& view) {"s,
+      "         return view(std::forward<range_ty>(r));"s,
+      "         }"s,
+      "      };"s,
+      ""s,
+      "   struct second_view {"s,
+      "      template <std::ranges::input_range range_ty>"s,
+      "      auto operator () (range_ty&& r) const {"s,
+      "         return std::forward<range_ty>(r) | std::views::transform([](auto const& e) { return e.second; });"s,
+      "         }"s,
+      ""s,
+      "      template <std::ranges::input_range range_ty>"s,
+      "      friend auto operator | (range_ty&& r, second_view const& view) {"s,
+      "         return view(std::forward<range_ty>(r));"s,
+      "         }"s,
+      "      };"s,
+      ""s,
+      "   namespace views {"s,
+      "      inline constexpr auto first = first_view{};"s,
+      "      inline constexpr auto second = second_view{};"s,
+      "      }"s,
+      ""s,
+
+      "   }"s,
+      ""s
+      };
+
+   /*
+   \author
+   \date
+   \copyright
+   \license
+   \version
+   */
+
+   out << "/*\n"
+       << "* Project: " << Denotation() << "\n"
+       << "* Definition of the fundamental type traits for the Project \n"
+       << "* Date: " << CurrentTimeStamp() << "  file created with adecc Scholar metadata generator\n";
+   if (Copyright().size() > 0) out << "* copyright © " << Copyright() << '\n';
+   if (License().size() > 0)   out << "* " << License() << '\n';
+   out << "*/\n\n"
+      << "#pragma once\n\n";
+
+   for (auto const& row : strBaseDefinition) out << std::format("{}\n", row);
+   return true;
+}
 
 std::vector<std::string> TMyDictionary::TopologicalSequence() const {
   auto tmpTables = Tables() | std::views::keys | std::ranges::to<std::vector>();
